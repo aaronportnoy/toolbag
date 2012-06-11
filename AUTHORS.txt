@@ -1,0 +1,16 @@
+AUTHORS
+--------
+    Aaron Portnoy       
+    Brandon Edwards     
+
+CONTRIBUTORS
+-------------
+    Logan Brown
+    Zef Cekaj
+    Ali Rizvi-Santiago
+    Peter Vreugdenhil
+    Kelly Lum
+
+CONTACT
+--------
+    http://www.thunkers.net/~deft/code/toolbag/contact.html

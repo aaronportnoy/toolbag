@@ -1,0 +1,55 @@
+/* Defaults */
+body                { background-color: black; color: #00fa00; margin: 8px; }
+hr                  { color: #00fa00; }
+textarea            { background-color: #080808; color: #00fa00; }
+p                   { text-align: justify; }
+
+/* Links */
+a:active, a:hover           { color: #00fa00; text-decoration: underline; }
+a:link                      { color: #00fa00; text-decoration: bold; }
+a:visited                   { color: #006600; text-decoration: none; }
+
+a.nav:active, a.nav:hover   { color: #006600; text-decoration: underline; }
+a.nav:link, a.nav:visited   { color: #006600; text-decoration: none; }
+
+a.menuitem:active, a.menuitem:hover { color: #006600; text-decoration: none; }
+a.menuitem:link, a.menuitem:visited { color: #006600; text-decoration: none; }
+
+.codelink {
+color: #00fa00;
+}
+
+.navbar {
+background-color: #404040;
+color: #00fa00;
+}
+
+.navbar-select {
+background-color: #00fa00;
+color: #404040;
+}
+
+.summary {
+background-color: black;
+color:#00fa00;
+}
+
+.table-header {
+background-color: black;
+color:#00fa00;
+}
+
+.details {
+background-color: black;
+color:#00fa00;
+}
+
+.breakcrumbs {
+background-color: black;
+color:#00fa00;
+}
+
+.options {
+background-color: black;
+color:#00fa00;
+}

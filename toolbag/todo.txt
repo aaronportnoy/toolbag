@@ -1,0 +1,38 @@
+To Do
+-----
+
+Important:
+    - add ability to save the results of pathfinding in the filesystem as .sess files so you can load via history view
+
+    - make marks use offset instead of absolute addresses... they wont work currently if you re-base
+
+    - add a structure editor/creator for situations like rp's vtable thing
+
+    - [HALFDONE] add a gui for adding edges, something w/ hotkeys... if the destination is a vtable or appears to be, try to enumerate all the entries, then present a checkbox list
+
+
+Ancillary:
+    - ensure strings referenced descends the whole reftree... doesnt seem to be
+    
+    - add the ability to specify a custom delta for the distance backwards/forwards from an xref for the query DB functionality to search
+
+    - add something like IDA's re-analyze program to update edges in case new functions are defined
+        - or to bring old .DB files up to date w/ new functionality for edges to .idata
+
+    - add a basic wysiwyg editor with file saving and loading capability 
+	   - apparently the new IDA will have this
+    
+    - add timestamp info to things added to the segment filesystem
+
+    - if a poll fails, remove the peer and set the gui accordingly
+    
+    - add the ability to hit the 'return' key when searching the query db interface
+	   - stupid IDA... it hooks return and I don't think I can override it...
+
+    - add a tutorial wizard thing walking through the hotkeys/usage 
+
+    - bribe hex-rays to provide an API to proximity graphs
+
+    - hook IDA's "Return" and "UndoReturn" and try to traverse the history appropriately with that info
+
+    - hook JumpEnter for when you're on an import, then do some magic
