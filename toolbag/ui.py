@@ -11,6 +11,7 @@ import re
 import sys
 import copy
 import pickle
+import atexit
 import socket
 import signal
 import getpass
@@ -1626,6 +1627,8 @@ class UI(PluginForm):
         uihook = MyUiHook(self)
         uihook.hook()
         self.ui_hook = uihook
+
+        atexit.register(uihook.unhook)
 
         # ui hooks
         self.ui_hook.register_handler("MakeName", self.tbMakeName)
