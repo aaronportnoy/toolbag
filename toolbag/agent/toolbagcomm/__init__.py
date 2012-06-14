@@ -58,7 +58,10 @@ class ToolbagPacket:
         self.filename = header[4] 
 
         # params
-        self.params = header[5]
+        try:
+            self.params = header[5]
+        except:
+            print "[!] error in toolbagcomm::init"
 
     def getHeader(self):
         header = (self.ip, self.port, self.key, self.opcode, self.filename)

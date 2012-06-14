@@ -10,6 +10,7 @@ Important:
 
     - [HALFDONE] add a gui for adding edges, something w/ hotkeys... if the destination is a vtable or appears to be, try to enumerate all the entries, then present a checkbox list
 
+    - add script timeout dialogs on intensive operations
 
 Ancillary:
     - ensure strings referenced descends the whole reftree... doesnt seem to be

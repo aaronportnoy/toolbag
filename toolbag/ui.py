@@ -12,6 +12,7 @@ import sys
 import copy
 import pickle
 import socket
+import signal
 import getpass
 import sqlite3
 import tempfile
@@ -261,11 +262,15 @@ class Query(PluginForm):
     def __init__(self, ui_obj, start, select):
         self.ui_obj = ui_obj
 
+        # seconds here's the query depth, setting shitty timeout for testing
         try:
+            self.ui_obj.db.store.foo = 'hihi'
             results = self.ui_obj.db.store.select(select)
         except sqlite3.OperationalError, RuntimeError:
             print "[!] Query failed (depth too large?)"
             return
+        except: 
+            raise
         
         self.addrs = [start]
         self.addrs.extend(results.keys())
@@ -2552,7 +2557,9 @@ class UI(PluginForm):
             return
 
         obj_data = self.fs.load(selected)
-        self.myhost.sendPeer(obj_data, "generic", selected)
+
+        for peer in self.peers:
+            self.myhost.sendPeer(obj_data, "generic", selected, params=None, idx=peer)
 
         self.rightClickMenuActive = False
 
@@ -2933,9 +2940,11 @@ class UI(PluginForm):
 
         depth_val = QtGui.QInputDialog().getInt(None, "Query DB", "Depth (positive or negative):")[0]
 
+        #tko = QtGui.QInputDialog().getInt(None, "Query DB", "Timeout (seconds):")[0]
+
         # hawt
         select = q.depth(addy, depth_val)
-
+        
         new_window = Query(self, addy, select)
 
         self.new_windows.append(new_window)
@@ -2968,7 +2977,8 @@ class UI(PluginForm):
 
         data = pickle.dumps((marks, groups))
 
-        self.myhost.sendPeer(data, "marks", "marks.marks")
+        for peer in self.peers:
+            self.myhost.sendPeer(data, "marks", "marks.marks", params=None, idx=peer)
         #mark_obj.clear()
         #for mark_ea, data in marks.iteritems():
         #    self.sendPeer((marks, group), "marks", "marks.marks")
@@ -2981,7 +2991,8 @@ class UI(PluginForm):
         try:
             addresses = copy.deepcopy(self.reftree.funtion_data)
             data = pickle.dumps(addresses)
-            self.myhost.sendPeer(data, "reftree", "reftree.sess")
+            for peer in self.peers:
+                self.myhost.sendPeer(data, "reftree", "reftree.sess", params=None, idx=peer)
         except Exception as detail:
             print detail
             print '[!] Failed to send data to the queue'
@@ -3228,7 +3239,7 @@ class UI(PluginForm):
 
                 # send a greeting to the peer
                 user = getpass.getuser()
-                self.myhost.sendPeer("User '%s' subscribed to your queue." % user, "greeting", "greetz.txt")
+                self.myhost.sendPeer("User '%s' subscribed to your queue." % user, "greeting", "greetz.txt", params=None, idx=peer_id)
 
                 self.peers.append(peer_id)
             except Exception as detail:
@@ -3496,13 +3507,15 @@ class UI(PluginForm):
         self.peerdata.remove(msg)
 
 
-    def pullQueueData(self):
+    def pullQueueData(self, shiftfocus=True):
         print "[*] Pulling data from the queue"
     
-        try:
-            self.tabs.setCurrentWidget(self.queueTab)
-        except Exception as detail:
-            print detail
+        if shiftfocus:
+            try:
+                self.tabs.setCurrentWidget(self.queueTab)
+            except Exception as detail:
+                print detail
+        
 
         try:
             socket.setdefaulttimeout(3)
@@ -3528,6 +3541,7 @@ class UI(PluginForm):
 
         except Exception as detail:
             print detail
+            raise
             return
 
 
@@ -3536,7 +3550,9 @@ class UI(PluginForm):
         self.message.show()
         self.message.showMessage("IDA Pro - Toolbag", msg, msecs=5000)
         if clickable:
-            self.message.messageClicked.connect(self.pullQueueData)
+            self.pullQueueData(shiftfocus=False)
+            # removing the need to click the balloon
+            #self.message.messageClicked.connect(self.pullQueueData)
 
 
     def get_refcounts(self):
@@ -3637,7 +3653,7 @@ class timercallback_t2(object):
                         if self.msgshown != 0:
                             self.ui_obj.showBalloon("There is still pending data in the queue")
                         else:
-                            self.ui_obj.showBalloon("There is pending data in the queue")
+                            self.ui_obj.showBalloon("Received data in the queue")
                     except Exception as detail:
                         print "Failed showing balloon: %s" % detail
 
