@@ -69,7 +69,7 @@ class analyze_xrefs:
             call_mnem = "jalr"
         
         # XXX gotta add support for jmps that go outside a function
-        if call_mnem in self.provider.getDisasm(pc).lower():
+        if call_mnem in self.provider.getMnem(pc).lower():
 
             xrefs_from = database.cxdown(pc)  
             func_top = function.top(pc)
@@ -148,13 +148,12 @@ class DB:
 
             self.store = my_store
 
-            # XXX: hackish way to fix a crap ton of stuff...
-            start = self.provider.segByBase(self.provider.segByName(".text"))
-            end = self.provider.segEnd(self.provider.segByBase(self.provider.segByName(".text")))
-
             proc = self.provider.getArch()
 
             if proc == "pc":
+                # XXX: hackish way to fix a crap ton of stuff...
+                start = self.provider.segByBase(self.provider.segByName(".text"))
+                end = self.provider.segEnd(self.provider.segByBase(self.provider.segByName(".text")))
 
                 succeeded = 0
                 for instr in self.provider.iterInstructions(start, end):
@@ -182,9 +181,11 @@ class DB:
                                 if options['verbosity'] > 2:
                                     print "[*] Successfully made new function at 0x%08x" % instr
                                 succeeded += 1
+
                         except Exception as detail:
                             print detail
                             pass
+
                     elif "dup(90h)" in disasm:
                         if options['verbosity'] > 2:
                             print "Found dup at 0x%08x" % instr
@@ -199,18 +200,18 @@ class DB:
                             if not ret and (next_ea in database.functions()) :
                                 if options['verbosity'] > 2:
                                     print "[*] Successfully made new function at 0x%08x" % next_ea
-                                succeeded +=1
+                                succeeded += 1
                         except:
                             pass
-
                    
                 if succeeded != 0:
                     print "[*] Successfully created %d new functions" % succeeded
 
-            all_funcs = database.functions()
             print "[*] There are %d funtions to process" % len(all_funcs)
+
             failed = 0
             succeeded = 0
+
             for i in xrange(0, len(all_funcs)):
     
                 i_actual = i+1
