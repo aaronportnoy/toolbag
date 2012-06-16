@@ -28,7 +28,7 @@ options = {
                 'pypath_linux'           : '/usr/bin/env python',
 
                 # default tabs enabled
-                'enabled_tabs'           : ["File System", "Pathfinding", "User Scripts"],
+                'enabled_tabs'           : ["File System", "Pathfinding", "Scripts"],
 
                 # show splash boolean
                 'show_splash'            : True,
