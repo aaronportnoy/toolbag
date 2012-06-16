@@ -166,18 +166,17 @@ class ToolbagHost:
             self.proc = subprocess.Popen([cmdline, "/c", pypath, serverpath, ip, str(port), key], startupinfo=si)
              
         elif plat == 'darwin' or plat == 'linux':
-            cmdline = "`which sh`"
-            
             # if no pypath was provided
             if pypath == None or pypath == '':
-                pypath = "`which python`"
+                pypath = "python"
 
-            self.proc = subprocess.Popen([cmdline, pypath, serverpath, ip, str(port), key])
+            self.proc = subprocess.Popen([pypath, serverpath, ip, str(port), key])
 
         self.pid = self.proc.pid
        
         print "[*] Server process PID: %d" % self.pid
-        print "[*] Server process handle: %d" % self.proc._handle
+        if plat == 'win32':
+            print "[*] Server process handle: %d" % self.proc._handle
         print "[*] Connecting to server queue"
         socket.setdefaulttimeout(None)
         self.serverqueue = QueueClient(ip, port, key)
