@@ -24,8 +24,7 @@ options = {
 
                 # python
                 'pypath_win32'           : 'C:\\Python26\\python.exe',
-                # XXX: not tested
-                'pypath_linux'           : '/usr/bin/env python',
+                'pypath_linux'           : 'python',
 
                 # default tabs enabled
                 'enabled_tabs'           : ["File System", "Pathfinding", "Scripts"],
