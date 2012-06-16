@@ -53,6 +53,9 @@ class IDA(base.Driver):
     def getDisasm(self, ea):
         return idc.GetDisasm(ea)
 
+    def getMnem(self, ea):
+        return idc.GetMnem(ea)
+
     def iterInstructions(self, start, end):
         return idautils.Heads(start, end)
 
