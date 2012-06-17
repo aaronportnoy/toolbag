@@ -26,6 +26,12 @@ class IDA(base.Driver):
     def currentEA(self):
         return idc.ScreenEA()
 
+    def cxUp(self, ea):
+        return database.cxup(ea)
+
+    def cxDown(self, ea):
+        return database.cxdown(ea)
+
     def getComment(self, ea):
         return idc.GetCommentEx(ea, False)
 
@@ -89,10 +95,13 @@ class IDA(base.Driver):
         return res
 
     def funcStart(self, ea):
-        func_item = idaapi.get_func(ea)
-        if func_item:
-            return func_item.startEA
-        else: 
+        try:
+            func_item = idaapi.get_func(ea)
+            if func_item:
+                return func_item.startEA
+            else: 
+                return None
+        except TypeError:
             return None
 
     def funcEnd(self, ea):

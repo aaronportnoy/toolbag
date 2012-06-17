@@ -8,6 +8,7 @@
 # Standard Libraries
 import os
 import sys
+import pickle
 
 #
 from ui import UI
@@ -47,20 +48,19 @@ class ToolBag:
         # file system must be initialized first as db requires it
         self.filesystem = FS(options)
         
-        print '[*] __init__.py: loading DB file from disk'
+        print '[*] __init__.py: loading .DB from disk'
         # try to see if its on disk already
         try:
             fh = open(options['full_file_name'], 'rb')
-            dbfile = fh.read()
+            self.master = pickle.load(fh)
             fh.close()
-            self.db = DB(options, create=False, existing=dbfile)
-        except:
-            print "[!] Unable to load the database file on disk at %s" % options['full_file_name']
+        except Exception as detail:
+            print detail
             print "[*] Creating a new database file on disk"
-            self.db = DB(options, create=True)
+            self.master = RefTree.MasterRefTree(options)
         
-        self.reftree = RefTree.RefTree(self.db)
-        self.ui = UI(self.reftree, self.filesystem, self.db, options)
+        self.reftree = RefTree.RefTree(masterGraph=self.master)
+        self.ui = UI(self.reftree, self.filesystem, self.master, options)
         self.ui.global_hook = self
 
         self.retvals = {}
@@ -77,7 +77,7 @@ class ToolBag:
     def getContext(self):
         res = {}
         res["ui"] = self.ui
-        res["db"] = self.db
+        res["master"] = self.master
         res["fs"] = self.filesystem
         res["reftree"] = self.reftree
         return res

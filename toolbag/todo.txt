@@ -14,6 +14,8 @@ Important:
 
 Ancillary:
     - ensure strings referenced descends the whole reftree... doesnt seem to be
+
+    - add import detection to the edge adding stuff
     
     - add the ability to specify a custom delta for the distance backwards/forwards from an xref for the query DB functionality to search
 

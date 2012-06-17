@@ -260,21 +260,20 @@ class Applier(PluginForm):
 
 
 class Query(PluginForm):
-    def __init__(self, ui_obj, start, select):
+    def __init__(self, ui_obj, start, depth):
         self.ui_obj = ui_obj
 
-        # seconds here's the query depth, setting shitty timeout for testing
-        try:
-            self.ui_obj.db.store.foo = 'hihi'
-            results = self.ui_obj.db.store.select(select)
-        except sqlite3.OperationalError, RuntimeError:
-            print "[!] Query failed (depth too large?)"
-            return
-        except: 
-            raise
-        
-        self.addrs = [start]
-        self.addrs.extend(results.keys())
+        if depth < 0:
+            depth = abs(depth)
+            results = self.ui_obj.master.queryDepth(start, depth, direction='up')
+        else:
+            results = self.ui_obj.master.queryDepth(start, depth, direction='down')
+
+        if results == []:
+            self.addrs = [start]
+        else:
+            self.addrs = [start]
+            self.addrs.extend(results)
 
         self.provider = ida.IDA()
 
@@ -290,7 +289,7 @@ class Query(PluginForm):
     def PopulateForm(self):
         addrs           = self.addrs
         layout          = QtGui.QVBoxLayout()
-        query_tree      = RefTree.RefTree(self.ui_obj.db)
+        query_tree      = RefTree.RefTree(self.ui_obj.master)
         self.query_tree = query_tree
 
         for a in addrs:
@@ -428,12 +427,11 @@ class Query(PluginForm):
         params     = self.search_input.text()
         treewidget = self.treewidget
         query_tree = self.query_tree
-        
 
         if self.reCheck.isChecked():
             re_obj = re.compile(params, re.IGNORECASE)
         
-        addrs = query_tree.funtion_data.keys()
+        addrs = query_tree.function_data.keys()
 
         bgbrush = QtGui.QBrush(QtGui.QColor(self.ui_obj.options['highlighted_background']))
         fgbrush = QtGui.QBrush(QtGui.QColor(self.ui_obj.options['highlighted_foreground']))
@@ -508,7 +506,7 @@ class UI(PluginForm):
     Main class responsible for the Toolbag UI
     """
 
-    def __init__(self, tree, fs, db, options):
+    def __init__(self, tree, fs, master, options):
         """
         Initializes the UI
 
@@ -518,8 +516,8 @@ class UI(PluginForm):
         @type   fs:         object
         @param  fs:         toolbag.FS file system object
 
-        @type   db:         object
-        @param  db:         toolbag.DB database object
+        @type   master:     object
+        @param  master:     toolbag.RefTree.MasterReftree object
 
         @type   options:    dict
         @param  options:    Dictionary containing the options read from config.py and userconfig.py
@@ -527,9 +525,9 @@ class UI(PluginForm):
         """
         
         self.fs                 = fs
-        self.db                 = db
         self.peers              = []
         self.agents             = dict()
+        self.master             = master
         self.reftree            = tree
         self.options            = options
         self.peerdata           = PeerDataQueue()
@@ -900,7 +898,7 @@ class UI(PluginForm):
         mark_list.installEventFilter(eventFilter)
 
         self.markList = mark_list
-        self.refreshMarks(self.db)
+        self.refreshMarks()
 
 
     def initUserScripts(self):
@@ -1927,7 +1925,7 @@ class UI(PluginForm):
         if self.reftree == None:
             if self.options['dev_mode']:
                 print 'DEBUG> self.reftree is None, making a new one'
-            self.reftree = RefTree.RefTree(self.db)
+            self.reftree = RefTree.RefTree(masterGraph=self.master)
 
         is_import = False
         if not database.isCode(ea):
@@ -1950,9 +1948,9 @@ class UI(PluginForm):
 
                     for i in self.provider.iterInstructions(block[0], block[1]):
                         self.provider.setColor(i, self.options['history_color'])
-                
+            
             self.reftree.add_func(ea)
-
+            
             # for undo operation
             if userEA == False:
                 if self.options['dev_mode']:
@@ -1961,7 +1959,6 @@ class UI(PluginForm):
 
             if self.options['verbosity'] > 5:
                 print "[*] ui.py: added 0x%08x to history" % ea
-
 
         if add == False:
             if self.options['dev_mode']:
@@ -1976,7 +1973,7 @@ class UI(PluginForm):
         if self.options['dev_mode']:
             print 'addtohistory: about to call refreshstrings/marks/imports'
         self.refreshStrings()
-        self.refreshMarks(self.db, local=True)
+        self.refreshMarks(local=True)
         self.refreshImports()
 
 
@@ -1989,10 +1986,9 @@ class UI(PluginForm):
 
     def CreateMark(self):
         class MarkDialog(QtGui.QDialog):
-            def __init__(self, db_obj, ui_obj, parent=None):
+            def __init__(self, ui_obj, parent=None):
                 super(MarkDialog, self).__init__(parent)
 
-                self.db_obj = db_obj
                 self.ui_obj = ui_obj
                 self.field1 = QtGui.QInputDialog()
                 self.field2 = QtGui.QInputDialog()
@@ -2029,16 +2025,22 @@ class UI(PluginForm):
                 description = self.field1.textValue()
                 group = self.field2.textValue()
 
+                funcaddr = self.ui_obj.provider.funcStart(ea)
+                if funcaddr == None:
+                    funcaddr = ea
+
                 if len(group) == 0:
-                    self.db_obj.tag(ea, 'mark', description)
+                    self.ui_obj.master.tag(ea, 'mark', description)
+
                 else:
-                    self.db_obj.tag(ea, 'mark', description)
-                    self.db_obj.tag(ea, 'group', group)
+                    self.ui_obj.master.tag(ea, 'mark', description)
+                    self.ui_obj.master.tag(ea, 'group', group)
+                
                 
                 self.done(1)
                 self.hide()
-                self.ui_obj.refreshMarks(self.ui_obj.db)
-                self.ui_obj.refreshMarks(self.ui_obj.db, local=True)
+                self.ui_obj.refreshMarks()
+                self.ui_obj.refreshMarks(local=True)
 
 
             def keyPressEvent(self, event):
@@ -2046,9 +2048,9 @@ class UI(PluginForm):
                     self.done(1)
                     self.add_mark()
 
-        mark = MarkDialog(self.db, self)
-        self.refreshMarks(self.db)
-        self.refreshMarks(self.db, local=True)
+        mark = MarkDialog(self)
+        self.refreshMarks()
+        self.refreshMarks(local=True)
 
 
     def PathStart(self):
@@ -2198,7 +2200,7 @@ class UI(PluginForm):
         if not hasattr(self, 'pathStartAddress') or not hasattr(self, 'pathEndAddress'):
             print "[!] Cannot plot a path without both a start and an end address defined"
             return
-        pf = pathfinder.FunctionPathFinder(self.db)
+        pf = pathfinder.FunctionPathFinder(self.master)
         pf.useDataRefs(True)
         pf.addStartFunction(self.pathStartAddress)
         paths = pf.findPaths(self.pathEndAddress, 25)
@@ -2218,17 +2220,17 @@ class UI(PluginForm):
         for s in selected:
             address = int(s.text(3), 16)
             
-            self.db.deleteTag(address, 'mark')
+            self.master.deleteTag(address, 'mark')
             try:
                 #group = s.text(2)
-                self.db.deleteTag(address, 'group')
+                self.master.deleteTag(address, 'group')
             except Exception as detail:
                 print detail
 
         self.rightClickMenuActive = False
 
-        self.refreshMarks(self.db)
-        self.refreshMarks(self.db, local=True)
+        self.refreshMarks()
+        self.refreshMarks(local=True)
 
 
     def deleteGlobalMark(self):
@@ -2237,20 +2239,20 @@ class UI(PluginForm):
         for s in selected:
             address = int(s.text(3), 16)
 
-            self.db.deleteTag(address, 'mark')
+            self.master.deleteTag(address, 'mark')
             try:
                 #group = s.text(2)
-                self.db.deleteTag(address, 'group')
+                self.master.deleteTag(address, 'group')
             except Exception as detail:
                 print detail
 
         self.rightClickMenuActive = False
 
-        self.refreshMarks(self.db)
-        self.refreshMarks(self.db, local=True)
+        self.refreshMarks()
+        self.refreshMarks(local=True)
 
 
-    def refreshMarks(self, db_obj, local=False):
+    def refreshMarks(self, local=False):
 
         # ensure we aren't accidentally de-selecting something via a refresh while a context menu is active
         if self.rightClickMenuActive:
@@ -2266,8 +2268,8 @@ class UI(PluginForm):
         if selected != []:
             selected_address = selected[0].text(3)
 
-        marks = db_obj.getAttribute('mark')
-        groups = db_obj.getAttribute('group')
+        marks = self.master.getAttribute('mark')
+        groups = self.master.getAttribute('group')
 
         mark_obj.clear()
         for mark_ea, data in marks.iteritems():
@@ -2404,7 +2406,7 @@ class UI(PluginForm):
         try:
             addr = int(col2_data, 16)
             database.go(addr)
-            self.refreshMarks(self.db, local=True)
+            self.refreshMarks(local=True)
 
             if self.show_imports == True:
                 self.refreshImports()
@@ -2512,9 +2514,9 @@ class UI(PluginForm):
             marks,groups = pickle.loads(obj_data)
             
             for mark_ea, mark in marks.iteritems():
-                self.db.tag(mark_ea, 'mark', mark['mark'])
+                self.master.tag(mark_ea, 'mark', mark['mark'])
 
-            self.refreshMarks(self.db)
+            self.refreshMarks()
             
         elif ".cmts" in selected[-5:]:
             obj_data = self.fs.load(selected)
@@ -2604,11 +2606,11 @@ class UI(PluginForm):
         treewidget = self.history_obj
         treewidget.clear()
 
-        self.reftree = RefTree.RefTree(self.db)
+        self.reftree = RefTree.RefTree(masterGraph=self.master)
 
         eas = set()
         for obj in to_merge:
-            for func in obj.funtion_data.keys():
+            for func in obj.function_data.keys():
                 eas.add(func)
 
         eas = list(eas)
@@ -2653,7 +2655,7 @@ class UI(PluginForm):
             self.reftree = copy.deepcopy(obj)
 
             self.addToHistory(add=False)
-            self.refreshMarks(self.db, local=True)
+            self.refreshMarks(local=True)
             self.tabs.setCurrentWidget(self.historyTab)
 
 
@@ -2943,12 +2945,8 @@ class UI(PluginForm):
 
         depth_val = QtGui.QInputDialog().getInt(None, "Query DB", "Depth (positive or negative):")[0]
 
-        #tko = QtGui.QInputDialog().getInt(None, "Query DB", "Timeout (seconds):")[0]
-
         # hawt
-        select = q.depth(addy, depth_val)
-        
-        new_window = Query(self, addy, select)
+        new_window = Query(self, addy, depth_val)
 
         self.new_windows.append(new_window)
 
@@ -2975,8 +2973,8 @@ class UI(PluginForm):
     def pushMarksToPeers(self):
         # XXX: disabled right now? or did i do this w/ 'generic'? ... hmm.
         pass
-        marks = self.db.getAttribute('mark')
-        groups = self.db.getAttribute('group')
+        marks = self.master.getAttribute('mark')
+        groups = self.master.getAttribute('group')
 
         data = pickle.dumps((marks, groups))
 
@@ -2992,7 +2990,7 @@ class UI(PluginForm):
 
     def invokeQueues(self):
         try:
-            addresses = copy.deepcopy(self.reftree.funtion_data)
+            addresses = copy.deepcopy(self.reftree.function_data)
             data = pickle.dumps(addresses)
             for peer in self.peers:
                 self.myhost.sendPeer(data, "reftree", "reftree.sess", params=None, idx=peer)
@@ -3023,7 +3021,7 @@ class UI(PluginForm):
                     print "[*] Adding an edge from 0x%08x to 0x%08x" % (self.edge_source, self.edge_dest)
                 else:
                     print "[*] Adding an edge from 0x%016x to 0x%016x" % (self.edge_source, self.edge_dest)
-                self.db.addEdge(self.edge_source, self.edge_dest)
+                self.master.addEdge(self.edge_source, self.edge_dest)
                 self.addToHistory(userEA=self.edge_dest)
                 self.addToHistory(userEA=self.edge_source)
 
@@ -3057,7 +3055,7 @@ class UI(PluginForm):
                 comment = ""
 
                 for addy in code_addys:
-                    self.db.addEdge(self.edge_source, addy)
+                    self.master.addEdge(self.edge_source, addy)
                     self.addToHistory(userEA=addy)
                     
                     name = self.provider.getName(addy)
@@ -3092,7 +3090,7 @@ class UI(PluginForm):
             
             for addy in addys:
                 dst = int(addy, 16)
-                self.db.addEdge(src, dst)
+                self.master.addEdge(src, dst)
                 self.addToHistory(userEA=dst)
 
             print '[*] Added %d edges' % len(addys)
@@ -3304,6 +3302,11 @@ class UI(PluginForm):
 
         self.fs.store("default.rcmts", pickle.dumps(rcomment_dict))
 
+        # store the master graph
+        fh = open(self.options['full_file_name'], 'wb')
+        pickle.dump(self.master, fh)
+        fh.close()
+
         try:
             if self.provider.__module__ == "toolbag.providers.ida":
                 self.provider.unregisterTimer(self.timer1.obj)
@@ -3327,14 +3330,14 @@ class UI(PluginForm):
         except:
             pass
 
-        # save the default.ses
+        # save the default.sess
         self.saveHistory(default=True)
 
         # close the database
-        self.db.close()
+        #self.db.close()
 
         # delete objects that could cause IDA to crash
-        del(self.db)
+        #del(self.db)
         del(self.fs)
         del(self.reftree)
 
@@ -3351,7 +3354,7 @@ class UI(PluginForm):
 
 
     def timerthing(self):
-        self.timer1 = timercallback_t(self.db, self.refreshMarks)
+        self.timer1 = timercallback_t(self.refreshMarks)
 
 
     def deleteQueue(self):
@@ -3455,7 +3458,7 @@ class UI(PluginForm):
 
         if objtype == "reftree":
             addys = pickle.loads(msg)
-            to_pickle = RefTree.RefTree(self.db, funtion_data=addys)
+            to_pickle = RefTree.RefTree(masterGraph=self.master, function_data=addys)
             print "[*] Created RefTree from queue data"
 
             tmp = tempfile.TemporaryFile(mode='wb')
@@ -3592,8 +3595,7 @@ class UI(PluginForm):
 ###############################################################################
 
 class timercallback_t(object):
-    def __init__(self, db_obj, funcptr):
-        self.db_obj = db_obj
+    def __init__(self, funcptr):
         self.funcptr = funcptr
         self.provider = ida.IDA()
         
@@ -3609,8 +3611,7 @@ class timercallback_t(object):
 
         # removing, because if you have enough global marks to necessitate a scrollbar, 
         # when this fires it will scroll that back to the top, which is annoying
-        #self.funcptr(self.db_obj)
-        self.funcptr(self.db_obj, local=True)
+        self.funcptr(local=True)
         return self.interval
 
     def __del__(self):
