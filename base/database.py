@@ -4,7 +4,7 @@
 #
 
 import idc,idautils,idaapi as ida
-import instruction,function,segment,store.query as query
+import instruction,function,segment
 
 def isCode(ea):
     '''True if ea marked as code'''
@@ -314,46 +314,3 @@ def erase(ea):
     for x in tag(ea):
         tag(ea, x, None)
     color(ea, None)
-
-import store
-datastore = store.ida
-def tag(address, *args, **kwds):
-    '''tag(address, key?, value?) -> fetches/stores a tag from specified address'''
-    try:
-        context = function.top(address)
-
-    except ValueError:
-        context = None
-
-    if len(args) == 0 and len(kwds) == 0:
-#        result = __datastore.content.select(context, query.address(address))
-        result = datastore.address(context).select(query.address(address))
-        try:
-            result = result[address]
-        except:
-            result = {}
-        return result
-
-    elif len(args) == 1:
-        key, = args
-#        result = __datastore.content.select(context, query.address(address), query.attribute(key))
-        result = datastore.address(context).select(query.address(address), query.attribute(key))
-        try:
-            result = result[address][key]
-        except:
-            raise KeyError( (hex(address),key) )
-            result = None
-        return result
-
-    if len(args) > 0:
-        key,value = args
-        kwds.update({key:value})
-    return datastore.address(context).address(address).set(**kwds)
-#    return __datastore.content.set(context, address, **kwds)
-
-def color(ea, *args):
-    '''color(address, rgb?) -> fetches or stores a color to the specified address'''
-    if len(args) > 0:
-        c, = args
-        return tag(ea, '__color__', c)
-    return tag(ea, '__color__')

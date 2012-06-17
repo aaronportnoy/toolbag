@@ -15,7 +15,6 @@ import atexit
 import socket
 import signal
 import getpass
-import sqlite3
 import tempfile
 import subprocess
 
@@ -23,15 +22,11 @@ import subprocess
 from PySide import QtCore, QtGui
 
 # Toolbag stuff
-import fu
 import segment
 import RefTree
 import database
 import function
 import pathfinder
-
-# Toolbag's SQL
-from store import query as q
 
 # Remote communication
 import toolbagcomm

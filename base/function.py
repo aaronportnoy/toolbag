@@ -3,7 +3,7 @@
 # for public release, 2012
 #
 
-import idc, comment, database, structure, idautils, store.query as query
+import idc, comment, database, structure, idautils
 '''
 function-context
 
@@ -155,26 +155,3 @@ def blocks(function):
         continue
     return
 
-import store
-datastore = store.ida
-def tag(address, *args, **kwds):
-    '''tag(address, key?, value?) -> fetches/stores a tag from a function's comment'''
-#    '''tag(address, key?, value?, repeatable=True/False) -> fetches/stores a tag from a function's comment'''
-    if len(args) == 0:
-        return datastore.address(address)
-#        return __datastore.context.get(address)
-
-    elif len(args) == 1:
-        key, = args
-#        result = __datastore.context.select(query.address(address), query.attribute(key)).values()
-        result = datastore.select(query.address(address), query.attribute(key)).values()
-        try:
-            result = result[0][key]
-        except:
-            raise KeyError(hex(address),key)
-        return result
-
-    key,value = args
-    kwds.update({key:value})
-    return datastore.address(address).set(**kwds)
-#    return datastore.context.set(address, **kwds)

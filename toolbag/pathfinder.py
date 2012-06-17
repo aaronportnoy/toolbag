@@ -6,9 +6,6 @@
 # Aaron Portnoy
 
 
-# Standard Libraries
-import sqlite3
-
 # IDA
 import idc
 import idaapi
@@ -16,8 +13,6 @@ import idautils
 
 #
 import function
-from store import query as q
-import store
 
 
 class FunctionPathFinder(object):    

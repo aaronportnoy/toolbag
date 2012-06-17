@@ -12,7 +12,6 @@ import pickle
 
 #
 from ui import UI
-from db import DB
 
 import RefTree
 from config import *
