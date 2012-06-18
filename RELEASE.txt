@@ -1,0 +1,5 @@
+Release Notes
+-------------
+Toolbag v2.0:
+	- removed sqlite support
+	- this release is not backward compatible, you must delete your old .DB file to use this version
