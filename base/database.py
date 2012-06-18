@@ -209,25 +209,6 @@ base=baseaddress
 def getoffset(ea):
     return ea - baseaddress()
 
-def __select(q):
-    for x in functions():
-        x = function.top(x)
-        if q.has(function.tag(x)):
-            yield x
-        continue
-    return
-
-def select(*q, **where):
-    if where:
-        print "database.select's kwd arguments have been deprecated in favor of query"
-    result = list(q)
-    for k,v in where.iteritems():
-        if v is None:
-            result.append( query.hasattr(k) )
-            continue
-        result.append( query.hasvalue(k,v) )
-    return __select( query._and(*result) )
-
 def search(name):
     return idc.LocByName(name)
 
@@ -253,13 +234,9 @@ def name(ea, string=None):
             flags |= 0
 
         idc.MakeNameEx(ea, string, flags)
-        tag(ea, '__name__', string)
+        #tag(ea, '__name__', string)
         return n
 
-    try:
-        return tag(ea, '__name__')
-    except KeyError:
-        pass
     return None
 
 def blocks(start, end):
@@ -310,7 +287,3 @@ def contains(ea):
     l,r = range()
     return (ea >= l) and (ea < r)
 
-def erase(ea):
-    for x in tag(ea):
-        tag(ea, x, None)
-    color(ea, None)

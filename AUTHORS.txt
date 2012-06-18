@@ -7,9 +7,9 @@ CONTRIBUTORS
 -------------
     Logan Brown
     Zef Cekaj
-    Ali Rizvi-Santiago
     Peter Vreugdenhil
     Kelly Lum
+    Jasiel Spelman
 
 CONTACT
 --------

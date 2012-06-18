@@ -16,21 +16,18 @@ import function
 
 
 class FunctionPathFinder(object):    
-    def __init__(self, db):
+    def __init__(self, master):
 
         self.function_data = {}
         self.startFunctions = {}
         self.datarefs = {}
         self.use_data_refs = False
         self.parentCache = {}
-        self.db_store = db.store
+        self.master = master
 
         
     def getParents(self, addy):
-        select = q.depth(addy, -1)
-        results = self.db_store.select(select)
-
-        return results.keys()
+        return self.master.xrefs_to(addy)
 
 
     def useDataRefs(self, value = True):
