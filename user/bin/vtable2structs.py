@@ -77,8 +77,14 @@ ecount = 0
 for k, vals in vtables.iteritems():
     struct_id = idc.AddStrucEx(-1, k, 0)
     vcount += 1
+    tcount = 0 # help fix collisions
     for v in vals:
         ecount += 1
-        idc.AddStrucMember(struct_id, v, -1, idc.FF_1OFF, -1, 4, -1, 0, idc.REF_OFF32)
+        ret = idc.AddStrucMember(struct_id, v, -1, idc.FF_DWRD|idc.FF_1OFF, -1, 4, -1, 0, idc.REF_OFF32)
+        if ret == -1:    #IF we were unable to create the member due to a pre-existing same name, add a counter
+            tcount += 1  # to the end and try again
+            idc.AddStrucMember(struct_id, v+str(tcount), -1, idc.FF_DWRD|idc.FF_1OFF, -1, 4, -1, 0, idc.REF_OFF32)
+        elif ret != 0:
+            print "failed to create this member: %s"%v
 
 print "[*] Created %d structures with a total of %d members" % (vcount, ecount)
