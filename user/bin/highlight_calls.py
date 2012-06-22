@@ -4,7 +4,8 @@
 #
 # Aaron Portnoy
 
-
+from idautils import XrefsFrom
+from idaapi import fl_CN as call_near, fl_CF as call_far
 from providers import ida
 
 provider = ida.IDA()
@@ -17,9 +18,8 @@ all_addresses.extend(provider.iterFuncChunks(startEA))
 all_addresses = list(set(all_addresses))
 
 for head in all_addresses:
-  disasm = provider.getDisasm(head)
-
-  if disasm.startswith("call"):
-    provider.setColor(head, 0x0000FF)
+  for xref in XrefsFrom(head):
+    if xref.type == call_near or xref.type == call_far:
+      provider.setColor(head, 0x0000FF)
 
 provider.refreshView()
