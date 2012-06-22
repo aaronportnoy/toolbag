@@ -8,24 +8,22 @@ for f in idautils.Functions():
     func = idaapi.get_func(f)
 
     for h in idautils.Heads(func.startEA, func.endEA):
-        opcodes = idc.Dword(h) & 0xFFFF
-        if opcodes == 0x24ff:
+        res = idaapi.get_switch_info_ex(h)
+        if res != None:
             # number of cases
-            res = idaapi.get_switch_info_ex(h)
-            if res != None:
-                num_cases = res.get_jtable_size()
-            else:
-                continue
+            num_cases = res.get_jtable_size()
+        else:
+            continue
 
-            print '0x%08x: switch (%d cases)' % (h, num_cases)
+        print '0x%08x: switch (%d cases)' % (h, num_cases)
 
-            # get cases
-            xrefs = idautils.CodeRefsFrom(h, 1)
+        # get cases
+        xrefs = idautils.CodeRefsFrom(h, 1)
 
 
-            interesting_calls = []
+        interesting_calls = []
             
-            switches.append((h, num_cases, interesting_calls))
+        switches.append((h, num_cases, interesting_calls))
 
 
 
