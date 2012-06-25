@@ -351,3 +351,9 @@ class MasterRefTree(RefTree):
                 if attr in vals.keys():
                     res[k] = vals
         return res
+
+    def addEdge(self, src, dst):
+        # src is an EA inside a function
+        src_func = self.provider.funcStart(src)
+        self.function_data[src_func]['children'].append(dst)
+        self.function_data[dst]['parents'].append(src_func)

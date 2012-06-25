@@ -18,61 +18,42 @@ import function
 class FunctionPathFinder(object):    
     def __init__(self, master):
 
-        self.function_data = {}
-        self.startFunctions = {}
-        self.datarefs = {}
-        self.use_data_refs = False
-        self.parentCache = {}
+        self.startFunctions = set([])
         self.master = master
 
         
     def getParents(self, addy):
         return self.master.xrefs_to(addy)
 
-
-    def useDataRefs(self, value = True):
-        #Experimental, needs more testing
-        self.use_data_refs = value
-    
-
     def addStartFunction(self, addy):
-        self.startFunctions[addy] = True
+        self.startFunctions.add(addy)
 
 
-    def findPaths(self, addy, max_depth = 9999):
-        (result, paths_found) = self.findPath(addy, 0, max_depth, [addy])
-        if(result):
-            return paths_found
-
-        return []
-
-
-    def findPath(self, addy, depth, max_depth, path):
-        #print "find Path called with %08x %d %d" % (addy, depth, max_depth)
-        #print path
+    def findPaths(self, addy, pathBlocks = set([]), currentPath = set([]), depth = 0, maxdepth = 9999):
         if(addy in self.startFunctions):
-            return True, [path]
-        if(depth > max_depth):
-            return False, []
-        paths_found = []
-        #print self.function_data[addy]['parents']
+            pathBlocks.add(addy)
+            return True
+        if(depth > maxdepth):
+            return False
+        FoundPath = False
         for p in self.getParents(addy):
-            #print "Found parent: %08x" % p
-            if(not p in path):
-                (found, p_found) = self.findPath(p, depth + 1, max_depth, path + [p])
-                if(found):
-                    for pf in p_found:
-                        paths_found.append(pf)
+            if(p in pathBlocks):
+                pathBlocks.add(addy)
+                FoundPath = True
+            elif(p in currentPath):
+                #Check for looping
+                continue
+            else:
+                p_found = self.findPaths(p, pathBlocks, currentPath | set([p]), depth + 1, maxdepth)
+                FoundPath = FoundPath or p_found
         #print 'done looping'
-        if(len(paths_found)):
-            return True, paths_found
-
-        return False, []
-
+        if(FoundPath):
+            pathBlocks.add(addy)
+        return FoundPath
 
 
 class PathGraph(idaapi.GraphViewer):
-    def __init__(self, funcname, paths, ui_obj):
+    def __init__(self, funcname, affected, edges, ui_obj):
         #Lets make sure we dont open the same graph twice. (it can crash IDA ... )        
         
         """
@@ -86,7 +67,8 @@ class PathGraph(idaapi.GraphViewer):
         idaapi.GraphViewer.__init__(self, "call graph of 0x%08x" % funcname)
 
         self.funcname = funcname
-        self.paths = paths
+        self.affected = affected
+        self.edges = edges
         self.f_to_id = {}
         self.id_to_f = {}
         self.ui_obj = ui_obj
@@ -97,20 +79,16 @@ class PathGraph(idaapi.GraphViewer):
         self.Clear()
         self.f_to_id = {}
         self.id_to_f = {}
-        for path in self.paths:
-            #print "Adding path to graph"
-            #print path
-            for f in path:
-                #print "adding function:"
-                #print f
-                if(not f in self.f_to_id):
-                    f_id = self.AddNode(self.getText(f))
-                    self.f_to_id[f] = f_id
-                    self.id_to_f[f_id] = f
-        for path in self.paths:
-            for i in xrange(len(path) - 1):
-                self.AddEdge(self.f_to_id[path[i+1]], self.f_to_id[path[i]])
-
+        for f in self.affected:
+            try:
+                f_id = self.AddNode(self.getText(f))
+            except Exception as detail:
+                print detail
+            self.f_to_id[f] = f_id
+            self.id_to_f[f_id] = f
+        for child in self.edges:
+            for parent in self.edges[child]:
+                self.AddEdge(self.f_to_id[parent], self.f_to_id[child])
         return True
 
 

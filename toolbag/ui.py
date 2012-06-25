@@ -9,6 +9,7 @@
 import os
 import re
 import sys
+import time
 import copy
 import pickle
 import atexit
@@ -16,6 +17,7 @@ import socket
 import signal
 import getpass
 import tempfile
+import traceback
 import subprocess
 
 # PySide
@@ -587,6 +589,9 @@ class UI(PluginForm):
 
     # MakeComment hook
     def tbMakeComment(self):
+        if self.options['dev_mode']:
+            print "[D] tbMakeComment: printing stack:"
+            traceback.print_stack()
 
         # grab the current EA
         ea = self.provider.currentEA()
@@ -609,6 +614,9 @@ class UI(PluginForm):
 
     # MakeRptCmt hook
     def tbMakeRptCmt(self):
+        if self.options['dev_mode']:
+            print "[D] tbMakeRptCmt: printing stack:"
+            traceback.print_stack()
 
         # grab the current EA
         ea = self.provider.currentEA()
@@ -631,6 +639,9 @@ class UI(PluginForm):
 
     # MakeName hook
     def tbMakeName(self):
+        if self.options['dev_mode']:
+            print "[D] tbMakeName: printing stack:"
+            traceback.print_stack()
         # XXX
         # this can be hit when stack args/vars, structs, enums are renamed
         print 'tbMakeName'
@@ -673,6 +684,10 @@ class UI(PluginForm):
 
 
     def createTabAndContainer(self, title, layout):
+        if self.options['dev_mode']:
+            print "[D] createTabAndContainer: printing stack:"
+            traceback.print_stack()
+
         t = QtGui.QWidget()
         t.setWindowTitle(title)
         c = layout()
@@ -681,6 +696,10 @@ class UI(PluginForm):
 
 
     def initHistoryTree(self):
+        if self.options['dev_mode']:
+            print "[D] initHistoryTree: printing stack:"
+            traceback.print_stack()
+
         history_obj      = QtGui.QTreeWidget()
         self.history_obj = history_obj
         history_obj.setHeaderLabels(("Name","Address"))
@@ -715,6 +734,10 @@ class UI(PluginForm):
 
 
     def initLocalMarks(self):
+        if self.options['dev_mode']:
+            print "[D] initLocalMarks: printing stack:"
+            traceback.print_stack()
+            
         local_marks      = QtGui.QTreeWidget()
         self.local_marks = local_marks
         local_marks.setHeaderLabels(("Description", "Location", "Group", "Address"))
@@ -758,6 +781,10 @@ class UI(PluginForm):
 
 
     def initShowImports(self):
+        if self.options['dev_mode']:
+            print "[D] initShowImports: printing stack:"
+            traceback.print_stack()
+            
         self.show_imports = False
         import_calls      = QtGui.QTreeWidget()
         self.import_calls = import_calls
@@ -773,6 +800,10 @@ class UI(PluginForm):
 
 
     def initShowStrings(self):
+        if self.options['dev_mode']:
+            print "[D] initShowStrings: printing stack:"
+            traceback.print_stack()
+            
         self.show_strings = False
         string_refs = QtGui.QTreeWidget()
         self.string_refs = string_refs
@@ -788,6 +819,10 @@ class UI(PluginForm):
 
 
     def initToolbarButtons(self, name, tooltip, callback):
+        if self.options['dev_mode']:
+            print "[D] initToolbarButtons: printing stack:"
+            traceback.print_stack()
+            
 
         obj = getattr(self, name)
         obj.setToolTip(tooltip)
@@ -796,11 +831,19 @@ class UI(PluginForm):
 
 
     def addItemsToContainer(self, container, items):
+        if self.options['dev_mode']:
+            print "[D] addItemsToContainer: printing stack:"
+            traceback.print_stack()
+            
         for i in items:
             container.addWidget(i)
 
 
     def initFileSystem(self):
+        if self.options['dev_mode']:
+            print "[D] initFileSystem: printing stack:"
+            traceback.print_stack()
+            
         fs_tree = QtGui.QTreeWidget()
         fs_tree.setHeaderLabels(("Filename", "Size", "ext"))
         fs_tree.setColumnCount(3)
@@ -857,6 +900,10 @@ class UI(PluginForm):
 
 
     def initGlobalMarks(self):
+        if self.options['dev_mode']:
+            print "[D] initGlobalMarks: printing stack:"
+            traceback.print_stack()
+            
         mark_list = QtGui.QTreeWidget()
         mark_list.setHeaderLabels(("Description", "Location", "Group", "Address"))
         mark_list.setColumnCount(4)
@@ -897,6 +944,10 @@ class UI(PluginForm):
 
 
     def initUserScripts(self):
+        if self.options['dev_mode']:
+            print "[D] initUserScripts: printing stack:"
+            traceback.print_stack()
+            
         fileSystemModel = QtGui.QFileSystemModel()
         fileSystemModel.setFilter(QtCore.QDir.Files)
         fileSystemModel.setNameFilters(["*.py"])
@@ -987,6 +1038,9 @@ class UI(PluginForm):
 
 
     def initPathfinding(self):
+        if self.options['dev_mode']:
+            print "[D] initPathfinding: printing stack:"
+            traceback.print_stack()
 
         pathfinding_group     = QtGui.QWidget()
         pathfinding_container = QtGui.QVBoxLayout()
@@ -1058,6 +1112,10 @@ class UI(PluginForm):
     
 
     def initOptions(self):
+        if self.options['dev_mode']:
+            print "[D] initOptions: printing stack:"
+            traceback.print_stack()
+            
         options_group = QtGui.QWidget()
         options_container = QtGui.QVBoxLayout()
         options_group.setLayout(options_container)
@@ -1102,6 +1160,10 @@ class UI(PluginForm):
 
 
     def initQueues(self):
+        if self.options['dev_mode']:
+            print "[D] initQueues: printing stack:"
+            traceback.print_stack()
+            
         host_group     = QtGui.QWidget()
         host_container = QtGui.QHBoxLayout()
         host_group.setLayout(host_container)
@@ -1235,6 +1297,10 @@ class UI(PluginForm):
 
 
     def PopulateForm(self):
+        if self.options['dev_mode']:
+            print "[D] PopulateForm: printing stack:"
+            traceback.print_stack()
+            
 
         layout = QtGui.QVBoxLayout()
 
@@ -1570,7 +1636,11 @@ class UI(PluginForm):
         self.timerthing()
 
         # load the default session if its available
-        self.loadSessFile(default=True)
+        try:
+            self.loadSessFile(default=True)
+        except:
+            print "[!] Failed to load default session"
+            self.clearHistory()
 
         # http://www.rainbowpuke.com/pics/newpukes/nickburns-rainbowpuke.gif
         bgbrush = QtGui.QBrush(QtGui.QColor(self.options['background_color']))
@@ -1630,6 +1700,10 @@ class UI(PluginForm):
 
 
     def importToggle(self):
+        if self.options['dev_mode']:
+            print "[D] importToggle: printing stack:"
+            traceback.print_stack()
+            
         if self.show_imports != True:
             self.show_imports = True
             self.show_imports_button.setText("Hide Import Calls")
@@ -1642,6 +1716,10 @@ class UI(PluginForm):
         self.refreshImports()
 
     def stringsToggle(self):
+        if self.options['dev_mode']:
+            print "[D] stringsToggle: printing stack:"
+            traceback.print_stack()
+            
         if self.show_strings != True:
             self.show_strings = True
             self.show_strings_button.setText("Hide Strings")
@@ -1655,6 +1733,10 @@ class UI(PluginForm):
 
 
     def createChildrenItems(self, tree, parentWidget):
+        if self.options['dev_mode']:
+            print "[D] createChildrenItems: printing stack:"
+            traceback.print_stack()
+            
         root       = tree[0]        
         children   = tree[1]
         rootWidget = QtGui.QTreeWidgetItem(parentWidget)
@@ -1698,6 +1780,10 @@ class UI(PluginForm):
         pass
 
     def processVTraceScript(self):
+        if self.options['dev_mode']:
+            print "[D] processVTraceScript: printing stack:"
+            traceback.print_stack()
+            
         try:
             selected = self.vtraceScripts.currentIndex().data()
         except:
@@ -1738,6 +1824,10 @@ class UI(PluginForm):
         return
 
     def prepVtraceScript(self):
+        if self.options['dev_mode']:
+            print "[D] prepVtraceScript: printing stack:"
+            traceback.print_stack()
+            
         #
         try:
             selected = self.vtraceScripts.currentIndex().data()
@@ -1765,6 +1855,10 @@ class UI(PluginForm):
         return
 
     def pushVtraceScript(self):
+        if self.options['dev_mode']:
+            print "[D] pushVtraceScript: printing stack:"
+            traceback.print_stack()
+            
         try:
             selected = self.vtraceScripts.currentIndex().data()
         except:
@@ -1783,11 +1877,19 @@ class UI(PluginForm):
 
 
     def pushAgent(self, data, opcode, filename, params=None, idx=None):
+        if self.options['dev_mode']:
+            print "[D] pushAgent: printing stack:"
+            traceback.print_stack()
+            
         print "[*] Pushing data of length %d to agent" % len(data)
         self.myhost.sendAgent(data, opcode, filename, params, idx)
         
 
     def editScript(self):
+        if self.options['dev_mode']:
+            print "[D] editScript: printing stack:"
+            traceback.print_stack()
+            
         try:
             selected = self.userScripts.currentIndex().data()
             edit_me  = self.options['user_scripts_dir'] + os.sep + selected
@@ -1815,6 +1917,10 @@ class UI(PluginForm):
 
 
     def userScriptsActivated(self, index):
+        if self.options['dev_mode']:
+            print "[D] userScriptsActivated: printing stack:"
+            traceback.print_stack()
+            
         fileInfo = self.userScriptsModel.fileInfo(index)
         abs_path = fileInfo.absoluteFilePath()
         module   = os.path.split(abs_path)[1]
@@ -1854,6 +1960,10 @@ class UI(PluginForm):
 
 
     def vtraceScriptsActivated(self, index):
+        if self.options['dev_mode']:
+            print "[D] vtraceScriptsActivated: printing stack:"
+            traceback.print_stack()
+            
         fileInfo = self.vtraceScriptsModel.fileInfo(index)
         abs_path = fileInfo.absoluteFilePath()
         module   = os.path.split(abs_path)[1]
@@ -1892,6 +2002,10 @@ class UI(PluginForm):
 
 
     def undoHistory(self):
+        if self.options['dev_mode']:
+            print "[D] undoHistory: printing stack:"
+            traceback.print_stack()
+            
         if self.reftree == None:
             return
 
@@ -1902,8 +2016,9 @@ class UI(PluginForm):
 
     def addToHistory(self, add=True, userEA=False):
         if self.options['dev_mode']:
-            print 'DEBUG> addToHistory'
-
+            print "[D] addToHistory: printing stack:"
+            traceback.print_stack()
+            
         treewidget = self.history_obj
 
         if userEA == False:
@@ -1961,7 +2076,6 @@ class UI(PluginForm):
                 treewidget.clear()
                 print self.reftree
         
-
         for graph in self.reftree.makeTrees():
             self.createChildrenItems(graph, treewidget)        
 
@@ -1973,6 +2087,10 @@ class UI(PluginForm):
 
 
     def JumpMark(self):
+        if self.options['dev_mode']:
+            print "[D] JumpMark: printing stack:"
+            traceback.print_stack()
+            
         try:
             self.tabs.setCurrentWidget(self.markTab)
         except Exception as detail:
@@ -1980,6 +2098,10 @@ class UI(PluginForm):
 
 
     def CreateMark(self):
+        if self.options['dev_mode']:
+            print "[D] CreateMark: printing stack:"
+            traceback.print_stack()
+            
         class MarkDialog(QtGui.QDialog):
             def __init__(self, ui_obj, parent=None):
                 super(MarkDialog, self).__init__(parent)
@@ -2049,6 +2171,10 @@ class UI(PluginForm):
 
 
     def PathStart(self):
+        if self.options['dev_mode']:
+            print "[D] PathStart: printing stack:"
+            traceback.print_stack()
+            
         ea         = self.provider.currentEA()
         func_name2 = None
         try:
@@ -2081,6 +2207,10 @@ class UI(PluginForm):
 
 
     def PathEnd(self):
+        if self.options['dev_mode']:
+            print "[D] PathEnd: printing stack:"
+            traceback.print_stack()
+            
         ea         = self.provider.currentEA()
         func_name2 = None
         try:
@@ -2113,6 +2243,10 @@ class UI(PluginForm):
 
 
     def BBPathStart(self):
+        if self.options['dev_mode']:
+            print "[D] BBPathStart: printing stack:"
+            traceback.print_stack()
+            
         ea = self.provider.currentEA()
         try:
             func_top = function.top(ea)
@@ -2138,6 +2272,10 @@ class UI(PluginForm):
 
 
     def BBPathEnd(self):
+        if self.options['dev_mode']:
+            print "[D] BBPathEnd: printing stack:"
+            traceback.print_stack()
+            
         ea = self.provider.currentEA()
         try:
             func_top = function.top(ea)
@@ -2164,6 +2302,9 @@ class UI(PluginForm):
 
 
     def plot_bb_path(self):
+        if self.options['dev_mode']:
+            print "[D] plot_bb_path: printing stack:"
+            traceback.print_stack()
         
         pf = pathfinder.BlockPathFinder()
 
@@ -2192,24 +2333,37 @@ class UI(PluginForm):
 
 
     def plot_path(self):
+        if self.options['dev_mode']:
+            print "[D] plot_path: printing stack:"
+            traceback.print_stack()
+            
         if not hasattr(self, 'pathStartAddress') or not hasattr(self, 'pathEndAddress'):
             print "[!] Cannot plot a path without both a start and an end address defined"
             return
+        starttime = time.time()
         pf = pathfinder.FunctionPathFinder(self.master)
-        pf.useDataRefs(True)
         pf.addStartFunction(self.pathStartAddress)
-        paths = pf.findPaths(self.pathEndAddress, 25)
-        if paths != []:
-            pg = pathfinder.PathGraph(self.pathEndAddress, paths, self)
+        affected = set([])
+        found_path = pf.findPaths(self.pathEndAddress, affected, set([self.pathEndAddress]), 0, 9999)
+        if found_path:
+            edges = {}
+            for c in affected:
+                edges[c] = set(self.master.xrefs_to(c)) & affected
+            pg = pathfinder.PathGraph(self.pathEndAddress, affected, edges, self)
             pg.Show()
         else:
             if self.options['architecture'] == "32":
                 print "[!] No paths found from 0x%08x => 0x%08x" % (self.pathStartAddress, self.pathEndAddress)
             else:
                 print "[!] No paths found from 0x%016x => 0x%016x" % (self.pathStartAddress, self.pathEndAddress)
+        print "Total run time in seconds: %d" % (time.time() - starttime)
 
 
     def deleteLocalMark(self):
+        if self.options['dev_mode']:
+            print "[D] deleteLocalMark: printing stack:"
+            traceback.print_stack()
+            
         selected = self.local_marks.selectedItems()
 
         for s in selected:
@@ -2229,6 +2383,10 @@ class UI(PluginForm):
 
 
     def deleteGlobalMark(self):
+        if self.options['dev_mode']:
+            print "[D] deleteGlobalMark: printing stack:"
+            traceback.print_stack()
+            
         selected = self.markList.selectedItems()
         
         for s in selected:
@@ -2248,7 +2406,10 @@ class UI(PluginForm):
 
 
     def refreshMarks(self, local=False):
-
+        if self.options['dev_mode']:
+            print "[D] refreshMarks: printing stack:"
+            traceback.print_stack()
+            
         # ensure we aren't accidentally de-selecting something via a refresh while a context menu is active
         if self.rightClickMenuActive:
             return
@@ -2384,6 +2545,10 @@ class UI(PluginForm):
 
     
     def markClicked(self, item, column):
+        if self.options['dev_mode']:
+            print "[D] markClicked: printing stack:"
+            traceback.print_stack()
+            
         # get the address from the column
         address_line = item.data(3, 0)
         address = int(address_line, 16)
@@ -2391,12 +2556,20 @@ class UI(PluginForm):
 
 
     def localMarkClicked(self, item, column):
+        if self.options['dev_mode']:
+            print "[D] localMarkClicked: printing stack:"
+            traceback.print_stack()
+            
         address_line = item.data(3, 0)
         address = int(address_line, 16)
         database.go(address)
         
 
     def historyClicked(self, item, column):
+        if self.options['dev_mode']:
+            print "[D] historyClicked: printing stack:"
+            traceback.print_stack()
+            
         col2_data = item.data(1,0)
         try:
             addr = int(col2_data, 16)
@@ -2414,6 +2587,10 @@ class UI(PluginForm):
 
 
     def saveHistory(self, default=False, userRefTree=None):
+        if self.options['dev_mode']:
+            print "[D] saveHistory: printing stack:"
+            traceback.print_stack()
+            
         if default:
             filename = "default.sess"
 
@@ -2451,6 +2628,10 @@ class UI(PluginForm):
 
 
     def clearHistory(self):
+        if self.options['dev_mode']:
+            print "[D] clearHistory: printing stack:"
+            traceback.print_stack()
+            
         treewidget = self.history_obj
         treewidget.clear()
         self.reftree = None
@@ -2458,6 +2639,10 @@ class UI(PluginForm):
 
 
     def deleteFile(self):
+        if self.options['dev_mode']:
+            print "[D] deleteFile: printing stack:"
+            traceback.print_stack()
+            
         try:
             selected = self.fsTree.selectedItems()[0]
         except:
@@ -2475,7 +2660,10 @@ class UI(PluginForm):
 
 
     def refreshFilesystem(self):
-
+        if self.options['dev_mode']:
+            print "[D] refreshFilesystem: printing stack:"
+            traceback.print_stack()
+            
         names = self.fs.list_files()
         
         self.fsTree.clear()
@@ -2497,6 +2685,10 @@ class UI(PluginForm):
 
 
     def applyFile(self):
+        if self.options['dev_mode']:
+            print "[D] applyFile: printing stack:"
+            traceback.print_stack()
+            
         try:
             selected = self.fsTree.selectedItems()[0].text(0)
         except:
@@ -2531,6 +2723,10 @@ class UI(PluginForm):
         self.rightClickMenuActive = False
 
     def addFile(self):  
+        if self.options['dev_mode']:
+            print "[D] addFile: printing stack:"
+            traceback.print_stack()
+            
         filename = str(QtGui.QFileDialog.getOpenFileName(self.fsTree, "Add File", os.sep, "All Files (*.*)")[0])
         
         print "[*] Adding file '%s' from disk to the filesystem." % filename
@@ -2549,6 +2745,10 @@ class UI(PluginForm):
 
 
     def pushPeers(self):
+        if self.options['dev_mode']:
+            print "[D] pushPeers: printing stack:"
+            traceback.print_stack()
+            
         try:
             selected = self.fsTree.selectedItems()[0].text(0)
         except:
@@ -2565,6 +2765,10 @@ class UI(PluginForm):
 
 
     def mergeSessFiles(self):
+        if self.options['dev_mode']:
+            print "[D] mergeSessFiles: printing stack:"
+            traceback.print_stack()
+            
         selected = self.fsTree.selectedItems()
         if len(selected) < 2:
             print "[!] You must have at least 2 session files selected to merge"
@@ -2621,6 +2825,10 @@ class UI(PluginForm):
 
 
     def loadSessFile(self, default=False):
+        if self.options['dev_mode']:
+            print "[D] loadSessFile: printing stack:"
+            traceback.print_stack()
+            
         if default:
             selected = "default.sess"
 
@@ -2658,6 +2866,10 @@ class UI(PluginForm):
 
 
     def applyOptions(self):
+        if self.options['dev_mode']:
+            print "[D] applyOptions: printing stack:"
+            traceback.print_stack()
+            
         # yeah, we're really doing this
         x = self.dynamicOptions
         txt = "self."
@@ -2674,6 +2886,10 @@ class UI(PluginForm):
 
 
     def saveToRetVals(self):
+        if self.options['dev_mode']:
+            print "[D] saveToRetVals: printing stack:"
+            traceback.print_stack()
+            
         try:
             selected = self.fsTree.selectedItems()[0].text(0)
         except:
@@ -2704,6 +2920,10 @@ class UI(PluginForm):
         self.rightClickMenuActive = False
 
     def exportFile(self):
+        if self.options['dev_mode']:
+            print "[D] exportFile: printing stack:"
+            traceback.print_stack()
+            
         try:
             selected = self.fsTree.selectedItems()[0].text(0)
         except:
@@ -2730,6 +2950,10 @@ class UI(PluginForm):
 
 
     def importCallClicked(self, item, column):
+        if self.options['dev_mode']:
+            print "[D] importCallClicked: printing stack:"
+            traceback.print_stack()
+            
         address_line = item.data(2, 0)
         address = int(address_line, 16)
         database.go(address)
@@ -2737,6 +2961,10 @@ class UI(PluginForm):
 
 
     def refreshImports(self):
+        if self.options['dev_mode']:
+            print "[D] refreshImports: printing stack:"
+            traceback.print_stack()
+            
         self.import_calls.clear()
 
         if self.show_imports == True:
@@ -2860,7 +3088,10 @@ class UI(PluginForm):
 
 
     def refreshStrings(self):
-
+        if self.options['dev_mode']:
+            print "[D] refreshStrings: printing stack:"
+            traceback.print_stack()
+            
         if self.show_strings == True:
             self.string_refs.setVisible(True)
         else:
@@ -2930,6 +3161,10 @@ class UI(PluginForm):
 
 
     def queryGraph(self):
+        if self.options['dev_mode']:
+            print "[D] queryGraph: printing stack:"
+            traceback.print_stack()
+            
         try:
             selected = self.history_obj.selectedItems()[0].text(1)
         except Exception as detail:
@@ -2966,6 +3201,10 @@ class UI(PluginForm):
 
 
     def pushMarksToPeers(self):
+        if self.options['dev_mode']:
+            print "[D] pushMarksToPeers: printing stack:"
+            traceback.print_stack()
+            
         # XXX: disabled right now? or did i do this w/ 'generic'? ... hmm.
         pass
         marks = self.master.getAttribute('mark')
@@ -2984,6 +3223,10 @@ class UI(PluginForm):
 
 
     def invokeQueues(self):
+        if self.options['dev_mode']:
+            print "[D] invokeQueues: printing stack:"
+            traceback.print_stack()
+            
         try:
             addresses = copy.deepcopy(self.reftree.function_data)
             data = pickle.dumps(addresses)
@@ -2995,6 +3238,10 @@ class UI(PluginForm):
         
 
     def addEdgeSource(self):
+        if self.options['dev_mode']:
+            print "[D] addEdgeSource: printing stack:"
+            traceback.print_stack()
+            
         self.edge_source = self.provider.currentEA()
         if self.options['architecture'] == "32":
             print "[*] Set 0x%08x as source of an edge" % self.edge_source
@@ -3002,6 +3249,10 @@ class UI(PluginForm):
             print "[*] Set 0x%016x as source of an edge" % self.edge_source
 
     def addEdgeDest(self):
+        if self.options['dev_mode']:
+            print "[D] addEdgeDest: printing stack:"
+            traceback.print_stack()
+            
         self.edge_dest = self.provider.currentEA()
         if self.options['architecture'] == "32":
             print "[*] Set 0x%08x as destination of an edge" % self.edge_dest
@@ -3067,6 +3318,10 @@ class UI(PluginForm):
 
 
     def addEdge(self):
+        if self.options['dev_mode']:
+            print "[D] addEdge: printing stack:"
+            traceback.print_stack()
+            
         src = QtGui.QInputDialog().getText(None, "Add Edge", "Enter source address:")
         try:
             src = int(src[0], 16)
@@ -3097,6 +3352,10 @@ class UI(PluginForm):
 
 
     def toggleFileSystemTab(self):
+        if self.options['dev_mode']:
+            print "[D] toggleFileSystemTab: printing stack:"
+            traceback.print_stack()
+            
         done = False
         for i in xrange(0, self.tabs.count()):
             t = self.tabs.widget(i)
@@ -3110,6 +3369,10 @@ class UI(PluginForm):
 
 
     def toggleUserScriptsTab(self):
+        if self.options['dev_mode']:
+            print "[D] toggleUserScriptsTab: printing stack:"
+            traceback.print_stack()
+            
         done = False
         for i in xrange(0, self.tabs.count()):
             t = self.tabs.widget(i)
@@ -3124,6 +3387,10 @@ class UI(PluginForm):
 
 
     def togglePathfindingTab(self):
+        if self.options['dev_mode']:
+            print "[D] togglePathfindingTab: printing stack:"
+            traceback.print_stack()
+            
         done = False
         for i in xrange(0, self.tabs.count()):
             t = self.tabs.widget(i)
@@ -3138,6 +3405,10 @@ class UI(PluginForm):
 
 
     def toggleOptionsTab(self):
+        if self.options['dev_mode']:
+            print "[D] toggleOptionsTab: printing stack:"
+            traceback.print_stack()
+            
         done = False
         for i in xrange(0, self.tabs.count()):
             t = self.tabs.widget(i)
@@ -3152,6 +3423,10 @@ class UI(PluginForm):
 
 
     def viewSplash(self):
+        if self.options['dev_mode']:
+            print "[D] viewSplash: printing stack:"
+            traceback.print_stack()
+            
         # fuckin' python
         x = __import__("utils")
         reload(x)
@@ -3159,6 +3434,10 @@ class UI(PluginForm):
 
 
     def toggleQueueTab(self):
+        if self.options['dev_mode']:
+            print "[D] toggleQueueTab: printing stack:"
+            traceback.print_stack()
+            
         done = False
         for i in xrange(0, self.tabs.count()):
             t = self.tabs.widget(i)
@@ -3171,7 +3450,11 @@ class UI(PluginForm):
             self.tabs.addTab(self.queueTab, "Queues")
 
 
-    def addQueue(self):        
+    def addQueue(self):   
+        if self.options['dev_mode']:
+            print "[D] addQueue: printing stack:"
+            traceback.print_stack()
+
         if not self.peerRadio.isChecked() and not self.serverRadio.isChecked() and not self.agentRadio.isChecked():
             print "[!] You must select either Server, Agent, or Peer when adding...stuff."
             return False
@@ -3283,6 +3566,10 @@ class UI(PluginForm):
 
 
     def OnClose(self, form):
+        if self.options['dev_mode']:
+            print "[D] OnClose: printing stack:"
+            traceback.print_stack()
+            
         try:
             comment_dict = pickle.loads(self.fs.load("default.cmts"))
         except:
@@ -3339,7 +3626,10 @@ class UI(PluginForm):
         # delete any Query objects we created
         # prevents IDA from crashing due to a dangling reference
         for c in self.new_windows:
-            del(c)
+            try:
+                del(c)
+            except:
+                pass
         
         # remove the UI hooks
         self.ui_hook.unhook()
@@ -3349,10 +3639,18 @@ class UI(PluginForm):
 
 
     def timerthing(self):
+        if self.options['dev_mode']:
+            print "[D] timerthing: printing stack:"
+            traceback.print_stack()
+            
         self.timer1 = timercallback_t(self.refreshMarks)
 
 
     def deleteQueue(self):
+        if self.options['dev_mode']:
+            print "[D] deleteQueue: printing stack:"
+            traceback.print_stack()
+            
         selected = self.queueList.selectedItems()[0]
 
         # "SERVER" or "AGENT"
@@ -3408,6 +3706,10 @@ class UI(PluginForm):
 
 
     def rejectQueueData(self):
+        if self.options['dev_mode']:
+            print "[D] rejectQueueData: printing stack:"
+            traceback.print_stack()
+            
         try:
             selected_id = self.queueList.selectedItems()[0].text(3)
         except:
@@ -3431,6 +3733,10 @@ class UI(PluginForm):
 
 
     def saveQueueData(self):
+        if self.options['dev_mode']:
+            print "[D] saveQueueData: printing stack:"
+            traceback.print_stack()
+            
         try:
             selected_id = self.queueList.selectedItems()[0].text(3)
         except:
@@ -3509,6 +3815,10 @@ class UI(PluginForm):
 
 
     def pullQueueData(self, shiftfocus=True):
+        if self.options['dev_mode']:
+            print "[D] pullQueueData: printing stack:"
+            traceback.print_stack()
+            
         print "[*] Pulling data from the queue"
     
         if shiftfocus:
@@ -3547,6 +3857,10 @@ class UI(PluginForm):
 
 
     def showBalloon(self, msg, clickable=True):
+        if self.options['dev_mode']:
+            print "[D] showBalloon: printing stack:"
+            traceback.print_stack()
+            
         self.message = QtGui.QSystemTrayIcon()
         self.message.show()
         self.message.showMessage("IDA Pro - Toolbag", msg, msecs=5000)
@@ -3557,6 +3871,10 @@ class UI(PluginForm):
 
 
     def get_refcounts(self):
+        if self.options['dev_mode']:
+            print "[D] get_refcounts: printing stack:"
+            traceback.print_stack()
+            
         import types
         d = {}
         sys.modules
@@ -3576,15 +3894,6 @@ class UI(PluginForm):
         pairs.sort()
         pairs.reverse()
         return pairs
-
-    def print_top_100(self):
-        for n, c in self.get_refcounts()[:100]:
-            print '%10d %s' % (n, c.__name__)
-
-
-    def test(self, msg):
-        print msg
-
 
 
 ###############################################################################
