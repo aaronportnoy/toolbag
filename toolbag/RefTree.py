@@ -125,8 +125,11 @@ class MasterRefTree(RefTree):
 
         self.proc = self.provider.getArch()
 
+        self.jmp_mnem = ""
+
         if self.proc == "pc":
             self.call_mnem = "call"
+            self.jmp_mnem = "jmp"
         elif self.proc == "arm" or proc == "ppc":
             self.call_mnem = "bl"
         elif self.proc == "mips":
@@ -270,6 +273,18 @@ class MasterRefTree(RefTree):
                 if self.call_mnem in self.provider.getMnem(instr).lower():
                     xrefs_from = self.provider.cxDown(instr)
                     res.extend(xrefs_from)
+                elif self.jmp_mnem in self.provider.getMnem(instr).lower():
+
+                    xref = self.provider.cxDown(instr)
+                    if xref == []:
+                        continue
+                    else:
+                        xref = xref[0]
+
+                    dst_func_start = self.provider.funcStart(xref)
+                    if dst_func_start != None:
+                        if dst_func_start != start:
+                            res.append(xref)
 
         res = list(set(res))
         return res

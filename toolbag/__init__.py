@@ -24,6 +24,7 @@ from PySide import QtCore, QtGui
 class ToolBag:
     def __init__(self, options):
 
+        self.options = options
         self.provider = ida.IDA()
 
         # show splash screen
@@ -71,7 +72,6 @@ class ToolBag:
                 _script = __import__("utils")
             except Exception as detail:
                 print detail
-     
 
     def getContext(self):
         res = {}
@@ -81,6 +81,12 @@ class ToolBag:
         res["reftree"] = self.reftree
         return res
 
+    def reanalyze(self):
+        self.master =  RefTree.MasterRefTree(self.options)
+        self.reftree = RefTree.RefTree(masterGraph=self.master, function_data=self.reftree.function_data)
+        self.ui.reftree = self.reftree
+        self.ui.master = self.master
+        
 
 
 print '[*] Initializing Toolbag'

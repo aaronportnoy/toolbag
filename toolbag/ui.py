@@ -611,6 +611,13 @@ class UI(PluginForm):
         # refresh the FS tab
         self.refreshFilesystem()
 
+    # MakeFunction
+    def tbMakeFunction(self):
+        if self.options['dev_mode']:
+            print "[D] tbMakeFunction: printing stack:"
+            traceback.print_stack()
+        self.global_hook.reanalyze()
+
 
     # MakeRptCmt hook
     def tbMakeRptCmt(self):
@@ -1697,6 +1704,8 @@ class UI(PluginForm):
         self.ui_hook.register_handler("MakeName", self.tbMakeName)
         self.ui_hook.register_handler("MakeComment", self.tbMakeComment)
         self.ui_hook.register_handler("MakeRptCmt", self.tbMakeRptCmt)
+        self.ui_hook.register_handler("MakeFunction", self.tbMakeFunction)
+
 
 
     def importToggle(self):
