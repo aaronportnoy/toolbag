@@ -23,7 +23,6 @@ class FunctionPathFinder(object):
 
         
     def getParents(self, addy):
-        #return self.master.xrefs_to(addy)
         return self.master.function_data[addy]['parents']
 
     def addStartFunction(self, addy):
@@ -38,7 +37,6 @@ class FunctionPathFinder(object):
             return False
         FoundPath = False
         for p in self.getParents(addy):
-            print "parent: 0x%08x" % p
             if(p in pathBlocks):
                 pathBlocks.add(addy)
                 FoundPath = True
