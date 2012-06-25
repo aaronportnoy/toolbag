@@ -23,7 +23,8 @@ class FunctionPathFinder(object):
 
         
     def getParents(self, addy):
-        return self.master.xrefs_to(addy)
+        #return self.master.xrefs_to(addy)
+        return self.master.function_data[addy]['parents']
 
     def addStartFunction(self, addy):
         self.startFunctions.add(addy)
@@ -37,6 +38,7 @@ class FunctionPathFinder(object):
             return False
         FoundPath = False
         for p in self.getParents(addy):
+            print "parent: 0x%08x" % p
             if(p in pathBlocks):
                 pathBlocks.add(addy)
                 FoundPath = True
@@ -56,13 +58,12 @@ class PathGraph(idaapi.GraphViewer):
     def __init__(self, funcname, affected, edges, ui_obj):
         #Lets make sure we dont open the same graph twice. (it can crash IDA ... )        
         
-        """
-        AlreadyOpenGraph = idaapi.find_tform("call graph of " + funcname)
+        
+        AlreadyOpenGraph = idaapi.find_tform("call graph of 0x%08x" % funcname)
         
         if(AlreadyOpenGraph != None):
-            AlreadyOpenGraph.Close()
-            AlreadyOpenGraph.Free()
-        """
+            idaapi.close_tform(AlreadyOpenGraph, 0)
+            
 
         idaapi.GraphViewer.__init__(self, "call graph of 0x%08x" % funcname)
 
