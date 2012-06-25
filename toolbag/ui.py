@@ -616,7 +616,9 @@ class UI(PluginForm):
         if self.options['dev_mode']:
             print "[D] tbMakeFunction: printing stack:"
             traceback.print_stack()
-        self.global_hook.reanalyze()
+        self.master.add_func(self.provider.currentEA())
+        self.reftree.add_func(self.provider.currentEA())
+        #self.global_hook.reanalyze()
 
 
     # MakeRptCmt hook
@@ -2068,7 +2070,16 @@ class UI(PluginForm):
                     for i in self.provider.iterInstructions(block[0], block[1]):
                         self.provider.setColor(i, self.options['history_color'])
             
-            self.reftree.add_func(ea)
+            if self.options['dev_mode']:
+                print "[D] Trying to add the function to the reftree...."
+            
+            try:
+                self.reftree.add_func(ea)
+            except Exception as detail:
+                print detail
+
+            if self.options['dev_mode']:
+                print "[D] Succeeded adding function to reftree"
             
             # for undo operation
             if userEA == False:
@@ -2357,7 +2368,8 @@ class UI(PluginForm):
         if found_path:
             edges = {}
             for c in affected:
-                edges[c] = set(self.master.xrefs_to(c)) & affected
+                edges[c] = set(self.master.function_data[c]['parents']) & affected
+                #edges[c] = set(self.master.xrefs_to(c)) & affected
             pg = pathfinder.PathGraph(self.pathEndAddress, affected, edges, self)
             pg.Show()
         else:

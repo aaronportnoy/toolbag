@@ -25,11 +25,17 @@ class RefTree(object):
  
 
     def xrefs_to(self, addy):
-        return self.masterGraph.function_data[addy]['parents']
+        if self.masterGraph.function_data.has_key(addy):
+            return self.masterGraph.function_data[addy]['parents']
+        else:
+            return []
 
 
     def xrefs_from(self, addy):
-        return self.masterGraph.function_data[addy]['children']
+        if self.masterGraph.function_data.has_key(addy):
+            return self.masterGraph.function_data[addy]['children']
+        else:
+            return []
 
 
     def del_func(self, addy):
@@ -53,7 +59,6 @@ class RefTree(object):
             addy = func
 
         for p in self.xrefs_to(addy):
-
             #print "xrefs_to includes 0x%08x" % p
             #Only add parent if parent already in dict
             if p in self.function_data:
@@ -75,7 +80,10 @@ class RefTree(object):
                 if(not c in addy_info['children']):
                     addy_info['children'].append(c)
 
-        self.function_data[addy] = addy_info
+        if not self.masterGraph.function_data.has_key(addy):
+            self.masterGraph.function_data[addy] = addy_info
+        if not self.function_data.has_key(addy):
+            self.function_data[addy] = addy_info
 
 
     def makeTrees(self):
@@ -113,6 +121,26 @@ class RefTree(object):
             children.update(self.listChildren(branch))
         
         return children
+
+    def addEdge(self, src, dst):
+        src_func = self.provider.funcStart(src)
+
+        parents = set(self.function_data[dst]['parents'])
+        parents.add(src_func)
+        self.function_data[dst]['parents'] = list(parents)
+
+        # reftree
+        children = set(self.function_data[src_func]['children'])
+        children.add(dst)
+        self.function_data[src_func]['children'] = list(children)
+
+        parents = set(self.function_data[dst]['parents'])
+        parents.add(src_func)
+        self.function_data[dst]['parents'] = list(parents)
+        
+
+
+
 
 ###############################################################################
 
@@ -366,9 +394,3 @@ class MasterRefTree(RefTree):
                 if attr in vals.keys():
                     res[k] = vals
         return res
-
-    def addEdge(self, src, dst):
-        # src is an EA inside a function
-        src_func = self.provider.funcStart(src)
-        self.function_data[src_func]['children'].append(dst)
-        self.function_data[dst]['parents'].append(src_func)
