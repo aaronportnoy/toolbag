@@ -80,8 +80,6 @@ class RefTree(object):
                 if(not c in addy_info['children']):
                     addy_info['children'].append(c)
 
-        if not self.masterGraph.function_data.has_key(addy):
-            self.masterGraph.function_data[addy] = addy_info
         if not self.function_data.has_key(addy):
             self.function_data[addy] = addy_info
 
