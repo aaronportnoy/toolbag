@@ -19,6 +19,7 @@ import getpass
 import tempfile
 import traceback
 import subprocess
+import types
 
 # PySide
 from PySide import QtCore, QtGui
@@ -29,6 +30,7 @@ import RefTree
 import database
 import function
 import pathfinder
+import analysis
 
 # Remote communication
 import toolbagcomm
@@ -252,6 +254,218 @@ class Applier(PluginForm):
     def OnClose(self, form):
         pass
 
+
+###############################################################################
+
+class Analysis(PluginForm):
+    def __init__(self, ui_obj):
+        self.ui_obj = ui_obj
+        self.provider = ida.IDA()
+        self.font    = QtGui.QFont(self.ui_obj.options['font_name'], int(self.ui_obj.options['font_size']))
+        self.bgbrush = QtGui.QBrush(QtGui.QColor(self.ui_obj.options['background_color']))
+        self.fgbrush = QtGui.QBrush(QtGui.QColor(self.ui_obj.options['font_color']))
+        
+        # order matters so using two lists instead of a dict
+        self.labels = \
+        ['Name', 'Address', 'Args', 'Size', 'Xrefs To', 'Xrefs From', 'Blocks', 'Chunks', 'Cookie' , 'Recursive', 'Export', 'Leaf']
+        self.keynames = \
+        ['numArgs', 'funcSize', 'xrefsTo', 'xrefsFrom', 'numBlocks', 'numChunks', 'hasCookie', 'isRecursive', 'isExport', 'isLeaf']
+
+        self.default_engine_str = \
+'''
+### Provide a 'matching engine' myengine(attr) that will return True for functions with desirable attributes.
+### Attributes are stored in the 'attr' dictionary. The keys and the respective data types returned are:
+# numArgs, funcSize, xrefsFrom, xrefsTo, numBlocks, numChunks: <int>
+# hasCookie, isRecursive, isExport, isLeaf: <boolean>
+### An example query is below which return non-recursive functions with more than 2 arguments
+
+def myengine(attr): 
+    return ((attr['numArgs'] > 2) and (attr['isRecursive'] == False))
+'''
+        self.engine_str = self.default_engine_str
+
+        super(Analysis, self).__init__()
+
+
+    def OnCreate(self, form):
+        self.parent = self.FormToPySideWidget(form)
+        self.PopulateForm()
+
+    def PopulateForm(self):
+        layout = QtGui.QVBoxLayout()
+        self.layout = layout
+
+        self.textbox = QtGui.QPlainTextEdit()
+        p = self.textbox.palette()
+        p.setColor(QtGui.QPalette.Base, self.ui_obj.options['background_color'])
+        p.setColor(QtGui.QPalette.WindowText, self.ui_obj.options['font_color'])
+
+        self.textbox.setPalette(p)
+        self.textbox.setFont(self.font)
+        self.textbox.setPlainText(self.engine_str)
+
+        button_container = QtGui.QHBoxLayout()
+        button_group     = QtGui.QWidget()
+        button_group.setLayout(button_container)
+
+        execbutton = QtGui.QPushButton("Execute")
+        execbutton.clicked.connect(self.setEngine)
+        button_container.addStretch(1)
+        button_container.addWidget(execbutton)
+        button_container.addStretch(1)
+
+        export_container = QtGui.QHBoxLayout()
+        export_group     = QtGui.QWidget()
+        export_group.setLayout(export_container)
+
+        export_button = QtGui.QPushButton("Export")
+        export_button.clicked.connect(self.exportData)
+        export_container.addStretch(1)
+        export_container.addWidget(export_button)
+        export_container.addStretch(1)
+
+        # populate the table
+        self.makeTable(isNew=True)
+
+        layout.addWidget(self.textbox)
+        layout.addWidget(button_group)
+        layout.addWidget(self.table)
+        layout.addWidget(export_group)
+
+        self.parent.setLayout(layout)
+
+
+    def clearTable(self):
+        rows = self.table.rowCount() 
+        cols = self.table.columnCount()
+
+        for i in reversed(xrange(0, rows)):
+            print self.table.removeRow(i)
+
+        for i in reversed(xrange(0, cols)):
+            self.table.removeColumn(i)
+
+    def pretty(self, val):
+        # construct user-friendly strings
+        if type(val) is types.BooleanType:
+            if val: return "Y"
+            return "N"
+        
+        if val == -1:
+            return "?"
+
+        return str(val)
+
+    def setEngine(self):
+        engine_str = self.textbox.document().toPlainText()
+        self.engine_str = engine_str
+        self.textbox.setPlainText(self.engine_str)
+        self.clearTable()
+        self.makeTable()
+        print "herp: %s" % self.engine_str
+
+
+    def makeTable(self, isNew=False):
+        # turn our user-supplied string into an exec-able function
+        code_obj = compile(self.engine_str, '<string>', 'exec')
+        self.engine = code_obj
+ 
+        # get the function data from inside this nightmarish hellscape
+        func_data = self.ui_obj.master.function_data
+        search_data = analysis.search(self.engine)
+        try:
+            hits = search_data.matches(func_data)
+            # for the export
+            self.lasthits = hits
+        except:
+            self.engine_str = "# What the hell was that? Not a valid matching engine!\n"
+            self.engine_str += "\n" + self.default_engine_str
+            self.textbox.setPlainText(self.engine_str)
+            self.setEngine()
+            return
+
+        num_rows = len(hits)
+        num_cols = len(self.labels)
+        
+        if(isNew):
+            self.table = QtGui.QTableWidget(num_rows, num_cols)
+        else:
+            self.table.setColumnCount(num_cols)
+            self.table.setRowCount(num_rows)    
+
+        row = 0
+        for func, func_info in hits.iteritems():
+            col = 0
+            attrs = func_info['attr']
+            if attrs:
+                func_name = self.provider.getName(func)
+                func_name = self.provider.demangleName(func_name)
+
+                if not func_name:
+                    func_name = self.provider.getName(func)
+                
+                item = self.makeItem(func_name)
+                item.setTextAlignment(QtCore.Qt.AlignLeft) 
+                item.setTextAlignment(QtCore.Qt.AlignVCenter)
+                self.table.setItem(row, col, item)
+                col += 1
+                
+                func = self.pretty(hex(func))
+                item = self.makeItem(func)
+                self.table.setItem(row, col, item)
+                col += 1
+
+                for k in self.keynames:
+                    val = self.pretty(attrs[k])
+                    item = self.makeItem(val)
+                    self.table.setItem(row, col, item)
+                    col += 1
+                row += 1
+       
+        self.table.itemDoubleClicked.connect(self.itemDoubleClicked)
+        self.table.setHorizontalHeaderLabels(self.labels)
+        self.table.setSortingEnabled(True)
+    
+    def itemDoubleClicked(self, item):
+        # in function address column
+        if item.column() == 1:
+            self.provider.jumpto(int(item.text(), 16))
+
+    def makeItem(self, itemStr):
+        item = QtGui.QTableWidgetItem(itemStr)
+        item.setFont(self.font)
+        item.setForeground(self.fgbrush)
+        item.setBackground(self.bgbrush)
+        # center
+        item.setTextAlignment(QtCore.Qt.AlignCenter)
+
+        return item
+
+    def exportData(self):
+        # do somethin' britney spears muthafucka
+        text = QtGui.QInputDialog().getText(None, "Export Results", "Enter filename:")
+        filename = str(text[0])
+        tmp = tempfile.TemporaryFile(mode='wb')
+        tmpname = tmp.name
+        tmp.close()
+
+        lasthits_tree = RefTree.RefTree(masterGraph=self.ui_obj.master, function_data=self.lasthits)
+
+        pickled_file = open(tmpname, "wb")
+        pickle.dump(lasthits_tree, pickled_file)
+        pickled_file.close()
+
+        fh = open(tmpname, "rb")
+        tablehit_data = fh.read()
+        fh.close()
+
+        self.ui_obj.fs.store(filename, tablehit_data)
+        self.ui_obj.refreshFilesystem()
+        return
+
+    def onClose(self, form):
+        #um wat
+        return
 
 ###############################################################################
 
@@ -653,8 +867,6 @@ class UI(PluginForm):
             traceback.print_stack()
         # XXX
         # this can be hit when stack args/vars, structs, enums are renamed
-        print 'tbMakeName'
-
        
     def OnCreate(self, form):
         self.parent = self.FormToPySideWidget(form)
@@ -1634,6 +1846,9 @@ class UI(PluginForm):
         else:
             res.setChecked(False)
 
+        # add ability to launch function analysis
+        res = view_menu.addAction("Function Analysis", self.launch_Analysis)
+
         # add the ability to launch the splash screen
         res = view_menu.addAction("Welcome Screen", self.viewSplash)
 
@@ -2189,6 +2404,9 @@ class UI(PluginForm):
         self.refreshMarks()
         self.refreshMarks(local=True)
 
+    def launch_Analysis(self):
+        x = Analysis(self)
+        x.Show("Function Queries")
 
     def PathStart(self):
         if self.options['dev_mode']:
@@ -2981,7 +3199,7 @@ class UI(PluginForm):
         self.refreshImports()
 
 
-    def refreshImports(self):
+    def refreshImports(self, local=True):
         if self.options['dev_mode']:
             print "[D] refreshImports: printing stack:"
             traceback.print_stack()
@@ -3108,7 +3326,7 @@ class UI(PluginForm):
             raise
 
 
-    def refreshStrings(self):
+    def refreshStrings(self, local=True):
         if self.options['dev_mode']:
             print "[D] refreshStrings: printing stack:"
             traceback.print_stack()
@@ -3117,6 +3335,7 @@ class UI(PluginForm):
             self.string_refs.setVisible(True)
         else:
             self.string_refs.setVisible(False)
+        self.string_refs.clear()
 
         try:
             # this is pretty terrible, fyi. 
@@ -3124,9 +3343,7 @@ class UI(PluginForm):
             # as our schema affords it.
             # 
             # we do so with our analyzers/collectors in the priv8 version 
-            widget = self.history_obj
-            selected = widget.selectedItems()[0]
-            addy = int(selected.text(1), 16)
+            addy = self.provider.currentEA()
             funcs = list(self.reftree.listChildren(self.reftree.makeTree(addy)))
             
             self.string_refs.clear()
@@ -3174,10 +3391,10 @@ class UI(PluginForm):
                     except Exception as detail:
                         print '[!] Failed adding a string reference (refreshStrings), %s' % detail
 
-        except IndexError:
-            pass
+        #except IndexError:
+        #    print "INDEXERROR"
+        #    pass
         except Exception as detail:
-            pass
             print '[!] refreshStrings, %s' % detail
 
 
@@ -3664,7 +3881,7 @@ class UI(PluginForm):
             print "[D] timerthing: printing stack:"
             traceback.print_stack()
             
-        self.timer1 = timercallback_t(self.refreshMarks)
+        self.timer1 = timercallback_t([self.refreshMarks, self.refreshStrings, self.refreshImports])
 
 
     def deleteQueue(self):
@@ -3920,8 +4137,8 @@ class UI(PluginForm):
 ###############################################################################
 
 class timercallback_t(object):
-    def __init__(self, funcptr):
-        self.funcptr = funcptr
+    def __init__(self, funcptrs):
+        self.funcptrs = funcptrs
         self.provider = ida.IDA()
         
         self.interval = 1000
@@ -3936,7 +4153,8 @@ class timercallback_t(object):
 
         # removing, because if you have enough global marks to necessitate a scrollbar, 
         # when this fires it will scroll that back to the top, which is annoying
-        self.funcptr(local=True)
+        for ptr in self.funcptrs:
+            ptr(local=True)
         return self.interval
 
     def __del__(self):

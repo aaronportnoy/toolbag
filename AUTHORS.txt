@@ -1,14 +1,14 @@
 AUTHORS
 --------
     Aaron Portnoy       
-    Brandon Edwards     
+    Brandon Edwards  
+    Kelly Lum   
 
 CONTRIBUTORS
 -------------
     Logan Brown
     Zef Cekaj
     Peter Vreugdenhil
-    Kelly Lum
     Jasiel Spelman
 
 CONTACT

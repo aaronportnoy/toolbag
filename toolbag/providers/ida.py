@@ -206,9 +206,11 @@ class IDA(base.Driver):
     def enumImportNames(self, idx, func):
         return idaapi.enum_import_names(idx, func)
 
-
     def dataRefs(self, ea):
         return idautils.DataRefsFrom(ea)
 
     def scriptTimeout(self, timeout):
         return idaapi.set_script_timeout(timeout)
+
+    def jumpto(self, addr):
+        return idaapi.jumpto(addr)

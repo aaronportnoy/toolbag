@@ -8,6 +8,7 @@
 
 # for colors, see: # http://www.w3.org/TR/SVG/types.html#ColorKeywords
 options = { 
-               'example'        : True
-          }
-    
+               'example'          : True,
+               'dev_mode'		  : False,
+               'coloring_enabled' : False,
+          }    

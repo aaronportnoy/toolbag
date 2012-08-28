@@ -54,9 +54,7 @@ class FunctionPathFinder(object):
 
 class PathGraph(idaapi.GraphViewer):
     def __init__(self, funcname, affected, edges, ui_obj):
-        #Lets make sure we dont open the same graph twice. (it can crash IDA ... )        
-        
-        
+        #Lets make sure we dont open the same graph twice. (it can crash IDA ... )
         AlreadyOpenGraph = idaapi.find_tform("call graph of 0x%08x" % funcname)
         
         if(AlreadyOpenGraph != None):

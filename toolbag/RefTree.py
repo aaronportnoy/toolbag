@@ -7,6 +7,7 @@
 
 
 import database
+import analysis
 
 from providers import ida
 
@@ -45,11 +46,11 @@ class RefTree(object):
             print "[!] Failed to delete address 0x%08x from reftree." % addy
         return
 
-    def add_func(self, addy):
+    def add_func(self, addy, attrs={}):
         #get some function info
         func = self.provider.funcStart(addy)
 
-        addy_info = {'attr' : {}, 'parents' : [], 'children' : []}
+        addy_info = {'attr' : attrs, 'parents' : [], 'children' : []}
 
         if(not func):
             # probably an import
@@ -231,9 +232,12 @@ class MasterRefTree(RefTree):
             ea = all_funcs[i]
             if ((i_actual % 250 == 0) or (i == len(all_funcs)-1)):
                 print "[*] RefTree.py: Processing 0x%08x (%d of %d)" % (ea, i_actual, len(all_funcs))
+            
+            props = analysis.properties(ea)
+            func_props = props.funcProps()
 
             try:
-                self.add_func(ea)
+                self.add_func(ea, func_props)
                 succeeded += 1
             except Exception as detail:
                 raise
@@ -373,6 +377,7 @@ class MasterRefTree(RefTree):
 
         self.addAttributes(func_top, ea, taginfo)
 
+
     def deleteTag(self, address, tag):
         for func, addy_info in self.function_data.iteritems():
             attributes = addy_info['attr']
@@ -383,12 +388,18 @@ class MasterRefTree(RefTree):
             except KeyError:
                 pass
 
+
     def getAttribute(self, attr):
         res = {}
         for func, addy_info in self.function_data.iteritems():
             attributes = addy_info['attr']
             
             for k, vals in attributes.iteritems():
-                if attr in vals.keys():
-                    res[k] = vals
+
+                # if its an address
+                if isinstance(k, int):
+                    for address_k, address_val in vals.iteritems():
+                        if address_k == attr:
+                            res[k] = vals
         return res
+

@@ -2,7 +2,7 @@ DOCUMENTATION
 -------------
 Documentation and examples at http://thunkers.net/~deft/code/toolbag
 
-Also, there will be a GitHub repo of this available at some point.
+https://github.com/aaronportnoy/toolbag/
 
 
 THX

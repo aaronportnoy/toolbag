@@ -10,27 +10,30 @@ Important:
 
     - [HALFDONE] add a gui for adding edges, something w/ hotkeys... if the destination is a vtable or appears to be, try to enumerate all the entries, then present a checkbox list
 
-    - add script timeout dialogs on intensive operations
+    - [F*CKING IMPOSSIBLE] add script timeout dialogs on intensive operations
+
+    - fix mark sharing
 
 Ancillary:
-    - ensure strings referenced descends the whole reftree... doesnt seem to be
+	- add the ability to import 'k' or 'kv' output from windbg straight into the toolbag history view
 
-    - add import detection to the edge adding stuff
+	- add the ability to send a peer a popup or some such to jump them to a specific address
+
+    - ensure strings referenced descends the whole reftree... doesnt seem to be in some cases
+
+    - [DONE] add import detection to the edge adding stuff
     
     - add the ability to specify a custom delta for the distance backwards/forwards from an xref for the query DB functionality to search
 
-    - add something like IDA's re-analyze program to update edges in case new functions are defined
+    - [DONE] add something like IDA's re-analyze program to update edges in case new functions are defined
         - or to bring old .DB files up to date w/ new functionality for edges to .idata
 
-    - add a basic wysiwyg editor with file saving and loading capability 
-	   - apparently the new IDA will have this
-    
     - add timestamp info to things added to the segment filesystem
 
     - if a poll fails, remove the peer and set the gui accordingly
     
     - add the ability to hit the 'return' key when searching the query db interface
-	   - stupid IDA... it hooks return and I don't think I can override it...
+	   - IDA hooks return and I don't think I can override it...
 
     - add a tutorial wizard thing walking through the hotkeys/usage 
 
@@ -38,4 +41,4 @@ Ancillary:
 
     - hook IDA's "Return" and "UndoReturn" and try to traverse the history appropriately with that info
 
-    - hook JumpEnter for when you're on an import, then do some magic
+    - hook JumpEnter for when you're on an import, then do the magics
