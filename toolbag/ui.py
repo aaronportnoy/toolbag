@@ -1217,7 +1217,7 @@ class UI(PluginForm):
                     process_action = menu.addAction("Process Data...")
                     prep_action = menu.addAction("Prep ...")
 
-                    obj.connect(edit_action, QtCore.SIGNAL("triggered()"), self.ui.editScript)
+                    obj.connect(edit_action, QtCore.SIGNAL("triggered()"), self.ui.editVtraceScript)
                     obj.connect(push_action, QtCore.SIGNAL("triggered()"), self.ui.pushVtraceScript)
                     obj.connect(process_action, QtCore.SIGNAL("triggered()"), self.ui.processVTraceScript)
                     obj.connect(prep_action, QtCore.SIGNAL("triggered()"), self.ui.prepVtraceScript)
@@ -1241,7 +1241,7 @@ class UI(PluginForm):
                     menu = QtGui.QMenu()
                     edit_action = menu.addAction("Edit...")
 
-                    obj.connect(edit_action, QtCore.SIGNAL("triggered()"), self.ui.editScript)
+                    obj.connect(edit_action, QtCore.SIGNAL("triggered()"), self.ui.editUserScript)
 
                     menu.popup(obj.mapToGlobal(event.pos()))
                     menu.exec_()
@@ -2111,9 +2111,9 @@ class UI(PluginForm):
         self.myhost.sendAgent(data, opcode, filename, params, idx)
         
 
-    def editScript(self):
+    def editUserScript(self):
         if self.options['dev_mode']:
-            print "[D] editScript: printing stack:"
+            print "[D] editUserScript: printing stack:"
             traceback.print_stack()
             
         try:
@@ -2125,14 +2125,27 @@ class UI(PluginForm):
                 self.rightClickMenuActive = False
                 return 
 
-        if selected == None:
-            try:
-               selected = self.vtraceScripts.currentIndex().data() 
-               edit_me  = self.options['vtrace_scripts_dir'] + os.sep + selected
-            except Exception as detail:
+        print "[*] Running user's editor on %s" % selected
+
+        # lolololz
+        subprocess.call([self.options['editor'], edit_me])
+
+        self.rightClickMenuActive = False
+
+    def editVtraceScript(self):
+        if self.options['dev_mode']:
+            print "[D] editVtraceScript: printing stack:"
+            traceback.print_stack()
+            
+        try:
+            selected = self.vtraceScripts.currentIndex().data()
+            edit_me  = self.options['vtrace_scripts_dir'] + os.sep + selected
+        except Exception as detail:
+            if selected != None:
                 print "[!] No file selected", detail
                 self.rightClickMenuActive = False
-                return
+                return 
+
         
         print "[*] Running user's editor on %s" % selected
 
@@ -2163,6 +2176,13 @@ class UI(PluginForm):
                 # try importing the .py
                 try:
                     x = __import__(module)
+                    try:
+                        setattr(x, "ui_obj", self)
+                        x.init()
+                    except Exception as detail:
+                        print detail
+                        pass
+                    
                 except Exception as detail:
                     print detail
                     return
@@ -2173,11 +2193,25 @@ class UI(PluginForm):
             else:
                 # if it is in our namespace already, reload it
                 if self.dyn_imports.has_key(module):
-                    reload(self.dyn_imports[module])
+                    x = reload(self.dyn_imports[module])
+                    try:
+                        setattr(x, "ui_obj", self)
+                        x.init()
+                    except Exception as detail:
+                        print detail
+                        pass
                 else:
                     # otherwise, import it and update dict
                     try:
                         x = __import__(module)
+
+                        try:
+                            setattr(x, "ui_obj", self)
+                            x.init()
+                        except Exception as detail:
+                            print detail
+                            pass
+
                         self.dyn_imports[module] = x
                     except Exception as detail:
                         print detail
@@ -2642,6 +2676,67 @@ class UI(PluginForm):
 
         self.refreshMarks()
         self.refreshMarks(local=True)
+
+
+
+    def matchHistoryItem(self, widgetitem, param):
+
+        bgbrush = QtGui.QBrush(QtGui.QColor(self.options['background_color']))
+        fgbrush = QtGui.QBrush(QtGui.QColor(self.options['font_color']))
+
+        bgbrush_highlight = QtGui.QBrush(QtGui.QColor(self.options['highlighted_background']))
+        fgbrush_highlight = QtGui.QBrush(QtGui.QColor(self.options['highlighted_foreground']))
+        
+        text = widgetitem.text(1)
+        address = int(str(text), 16)
+       
+        if address == param:
+            widgetitem.setForeground(0, fgbrush_highlight)
+            widgetitem.setForeground(1, fgbrush_highlight)
+            widgetitem.setBackground(0, bgbrush_highlight)
+            widgetitem.setBackground(1, bgbrush_highlight)
+        else:
+            widgetitem.setForeground(0, fgbrush)
+            widgetitem.setForeground(1, fgbrush)
+            widgetitem.setBackground(0, bgbrush)
+            widgetitem.setBackground(1, bgbrush)
+
+
+        for childidx in xrange(0, widgetitem.childCount()):
+            self.matchHistoryItem(widgetitem.child(childidx), param) 
+
+
+    def refreshHistory(self, local=False):
+
+        currentEA = self.provider.currentEA()
+        func_top = self.provider.funcStart(currentEA)
+        
+        if not func_top:
+            return
+
+        bgbrush = QtGui.QBrush(QtGui.QColor('darkgreen'))
+        fgbrush = QtGui.QBrush(QtGui.QColor('white'))
+
+        toplevelcount = self.history_obj.topLevelItemCount()
+
+        for i in xrange(0, toplevelcount):
+            toplevelitem = self.history_obj.topLevelItem(i)
+
+            text = toplevelitem.text(1)
+            address = int(str(text), 16)
+
+            if address == func_top:
+                toplevelitem.setForeground(0, fgbrush)
+                toplevelitem.setForeground(1, fgbrush)
+                toplevelitem.setBackground(0, bgbrush)
+                toplevelitem.setBackground(1, bgbrush)
+                return
+            else:
+                toplevelitem.setForeground(0, QtGui.QBrush(QtGui.QColor(self.options['font_color'])))
+                toplevelitem.setForeground(1, QtGui.QBrush(QtGui.QColor(self.options['font_color'])))
+                toplevelitem.setBackground(0, QtGui.QBrush(QtGui.QColor(self.options['background_color'])))
+                toplevelitem.setBackground(1, QtGui.QBrush(QtGui.QColor(self.options['background_color'])))
+                self.matchHistoryItem(toplevelitem, func_top)
 
 
     def refreshMarks(self, local=False):
@@ -3395,7 +3490,8 @@ class UI(PluginForm):
         #    print "INDEXERROR"
         #    pass
         except Exception as detail:
-            print '[!] refreshStrings, %s' % detail
+            pass
+            #print '[!] refreshStrings, %s' % detail
 
 
     def queryGraph(self):
@@ -3475,23 +3571,31 @@ class UI(PluginForm):
             print '[!] Failed to send data to the queue'
         
 
-    def addEdgeSource(self):
+    def addEdgeSource(self, userEA=False):
         if self.options['dev_mode']:
             print "[D] addEdgeSource: printing stack:"
             traceback.print_stack()
-            
-        self.edge_source = self.provider.currentEA()
+        
+        if not userEA:
+            self.edge_source = self.provider.currentEA()
+        else:
+            self.edge_source = userEA
+        
         if self.options['architecture'] == "32":
             print "[*] Set 0x%08x as source of an edge" % self.edge_source
         else:
             print "[*] Set 0x%016x as source of an edge" % self.edge_source
 
-    def addEdgeDest(self):
+    def addEdgeDest(self, userEA=False):
         if self.options['dev_mode']:
             print "[D] addEdgeDest: printing stack:"
             traceback.print_stack()
-            
-        self.edge_dest = self.provider.currentEA()
+        
+        if not userEA:
+            self.edge_dest = self.provider.currentEA()
+        else:
+            self.edge_dest = userEA
+
         if self.options['architecture'] == "32":
             print "[*] Set 0x%08x as destination of an edge" % self.edge_dest
         else:
@@ -3881,7 +3985,7 @@ class UI(PluginForm):
             print "[D] timerthing: printing stack:"
             traceback.print_stack()
             
-        self.timer1 = timercallback_t([self.refreshMarks, self.refreshStrings, self.refreshImports])
+        self.timer1 = timercallback_t([self.refreshMarks, self.refreshStrings, self.refreshImports, self.refreshHistory])
 
 
     def deleteQueue(self):

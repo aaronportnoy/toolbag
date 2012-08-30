@@ -124,6 +124,10 @@ class RefTree(object):
     def addEdge(self, src, dst):
         src_func = self.provider.funcStart(src)
 
+        if not self.function_data.has_key(dst):
+            self.provider.makeFunc(dst)
+            self.add_func(dst)
+
         parents = set(self.function_data[dst]['parents'])
         parents.add(src_func)
         self.function_data[dst]['parents'] = list(parents)
@@ -362,6 +366,10 @@ class MasterRefTree(RefTree):
 
 
     def addAttributes(self, func_top, addy, attributes):
+        if not self.function_data.has_key(func_top):
+            self.provider.makeFunc(func_top)
+            self.add_func(func_top)
+
         if self.function_data[func_top]['attr'].has_key(addy):
             self.function_data[func_top]['attr'][addy].update(attributes)
         else:
