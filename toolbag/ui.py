@@ -2730,7 +2730,7 @@ class UI(PluginForm):
                 toplevelitem.setForeground(1, fgbrush)
                 toplevelitem.setBackground(0, bgbrush)
                 toplevelitem.setBackground(1, bgbrush)
-                return
+                self.matchHistoryItem(toplevelitem, func_top)
             else:
                 toplevelitem.setForeground(0, QtGui.QBrush(QtGui.QColor(self.options['font_color'])))
                 toplevelitem.setForeground(1, QtGui.QBrush(QtGui.QColor(self.options['font_color'])))
