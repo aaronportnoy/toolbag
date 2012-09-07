@@ -50,6 +50,10 @@ class RefTree(object):
         #get some function info
         func = self.provider.funcStart(addy)
 
+        if attrs == {}:
+            props = analysis.properties(addy)
+            attrs = props.funcProps()
+
         addy_info = {'attr' : attrs, 'parents' : [], 'children' : []}
 
         if(not func):
@@ -201,7 +205,6 @@ class MasterRefTree(RefTree):
                             succeeded += 1
 
                     except Exception as detail:
-                        print detail
                         pass
 
                 elif "dup(90h)" in disasm:

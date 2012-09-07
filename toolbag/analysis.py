@@ -53,14 +53,57 @@ class properties():
 		localv    = idc.GetFunctionAttr(self.addr, idc.FUNCATTR_FRSIZE)	
 		frameSize = idc.GetFrameSize(start) #idc.GetStrucSize(frame)
 
+
+		reg_off = 0
+		local_count = 0
+		arg_count = 0
+		sid = idc.GetFrame(self.addr)
+		if sid:
+			firstM = idc.GetFirstMember(sid)
+			lastM = idc.GetLastMember(sid)
+			arg_count = 0
+
+			for i in xrange(firstM, lastM):
+				mName = idc.GetMemberName(sid, i)
+				mSize = idc.GetMemberSize(sid, i)
+				mFlag = idc.GetMemberFlag(sid, i)
+				off = idc.GetMemberOffset(sid, mName)
+				#print "%s: %d, %x, off=%x" % (mName, mSize, mFlag, off)
+
+				if mName == " r":
+					reg_off = off
+
+			# XXX: just store the data, dont loop twice.
+			for i in xrange(firstM, lastM):
+				mName = idc.GetMemberName(sid, i)
+				mSize = idc.GetMemberSize(sid, i)
+				mFlag = idc.GetMemberFlag(sid, i)
+				off = idc.GetMemberOffset(sid, mName)
+
+				if off <= reg_off:
+					local_count += 1
+				elif off > reg_off and reg_off != 0:
+					arg_count += 1
+
+
+			if arg_count > 0:
+				return arg_count / 4
+			elif arg_count == 0:
+				return 0
+
 		# offset to return
 		try: 
 			ret = idc.GetMemberOffset(frame, " r") 
 		except:
+			if frameSize > localv:
+				return (frameSize - localv) / 4
 			# error getting function frame (or none exists)
 			return -1 
  
-		if (ret < 0): return -1 
+		if (ret < 0): 
+			if frameSize > localv:
+				return (frameSize - localv) / 4
+			return -1 
 
 		firstArg = ret + 4 
 		args  = frameSize - firstArg	
@@ -87,7 +130,11 @@ class properties():
 		return (self.addr in list(idautils.XrefsFrom(self.addr)))
 
 	def countBlocks(self):
-		return len(list(idaapi.FlowChart(idaapi.get_func(self.addr))))
+		try:
+			res = len(list(idaapi.FlowChart(idaapi.get_func(self.addr))))
+			return res
+		except:
+			return 0
 
 	def countXrefsTo(self):
 		return len(list(idautils.XrefsFrom(self.addr)))

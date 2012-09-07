@@ -362,7 +362,6 @@ def myengine(attr):
         self.textbox.setPlainText(self.engine_str)
         self.clearTable()
         self.makeTable()
-        print "herp: %s" % self.engine_str
 
 
     def makeTable(self, isNew=False):
@@ -377,11 +376,14 @@ def myengine(attr):
             hits = search_data.matches(func_data)
             # for the export
             self.lasthits = hits
-        except:
+        except Exception as detail:
+
             self.engine_str = "# What the hell was that? Not a valid matching engine!\n"
             self.engine_str += "\n" + self.default_engine_str
             self.textbox.setPlainText(self.engine_str)
-            self.setEngine()
+            
+            if not isNew:
+                self.setEngine()
             return
 
         num_rows = len(hits)
