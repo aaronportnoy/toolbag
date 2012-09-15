@@ -31,11 +31,13 @@ import toolbagcomm
 
 # 
 class ToolbagTask:
-    # pkt is the ToolbagPacket representation of data from the server
     # agentdata is our data as a tuple (ip, port, key)
-    def __init__(self, pkt, agentdata):
-        self.pkt = pkt
+    def __init__(self, fname, agentdata, serverdata):
+        self.fname = fname
         self.agentdata = agentdata
+        self.serverdata = serverdata
+        #self.agentdata = agentdata
+        #ToolbagTask.ToolbagTask.__init__(self, agentdata, serverdata)
 
     # process()
     # process the results: this called by the toolbag server on the results
@@ -45,7 +47,6 @@ class ToolbagTask:
     def process(self, results=None):
         if results == None:
             pass
-
 
     # sendResults()
     # this sends results back to the server: called by the agentside task

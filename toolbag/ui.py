@@ -739,7 +739,7 @@ class UI(PluginForm):
         
         self.fs                 = fs
         self.peers              = []
-        self.agents             = dict()
+        self.agent              = None
         self.master             = master
         self.reftree            = tree
         self.options            = options
@@ -1215,12 +1215,12 @@ class UI(PluginForm):
                     menu = QtGui.QMenu()
 
                     edit_action    = menu.addAction("Edit...")
-                    push_action    = menu.addAction("Push to Agent")
-                    process_action = menu.addAction("Process Data...")
-                    prep_action = menu.addAction("Prep ...")
+                    prep_action = menu.addAction("Prepare ...")
+                    run_action    = menu.addAction("Run on Agent ...")
+                    process_action = menu.addAction("Process Results...")
 
                     obj.connect(edit_action, QtCore.SIGNAL("triggered()"), self.ui.editVtraceScript)
-                    obj.connect(push_action, QtCore.SIGNAL("triggered()"), self.ui.pushVtraceScript)
+                    obj.connect(run_action, QtCore.SIGNAL("triggered()"), self.ui.runVtraceScript)
                     obj.connect(process_action, QtCore.SIGNAL("triggered()"), self.ui.processVTraceScript)
                     obj.connect(prep_action, QtCore.SIGNAL("triggered()"), self.ui.prepVtraceScript)
                     
@@ -2007,55 +2007,13 @@ class UI(PluginForm):
     def refreshScripts(self):
         pass
 
-    def processVTraceScript(self):
-        if self.options['dev_mode']:
-            print "[D] processVTraceScript: printing stack:"
-            traceback.print_stack()
-            
-        try:
-            selected = self.vtraceScripts.currentIndex().data()
-        except:
-            print "[!] No file selected"
-            self.rightClickMenuActive = False
-            return 
-
-        sys.path.append(self.options['vtrace_scripts_dir'])
-        
-        fname = selected.split(".py")[0]
-
-        try:
-            _script = __import__(fname)
-        except Exception as detail:
-            print detail
-
-        fname, ok = QtGui.QInputDialog().getText(None, "Process", "Enter file name:", QtGui.QLineEdit.Normal, "")
-
-        if fname == None or not ok:
-            return
-
-        obj_data = self.fs.load(fname)
-        try:
-            obj = pickle.loads(obj_data)
-        except TypeError:
-            print "[!] Tried to load a file %s that may not exist" % selected
-            self.rightClickMenuActive = False
-            return False
-        except KeyError:
-            obj = obj_data
-
-        print "[*] Invoking %s.process(%s)" % (selected, fname)
-
-        _script.process(data)
-
-        self.rightClickMenuActive = False
-        
-        return
 
     def prepVtraceScript(self):
         if self.options['dev_mode']:
             print "[D] prepVtraceScript: printing stack:"
             traceback.print_stack()
             
+        #FIXME add a check to ensure agent is present
         #
         try:
             selected = self.vtraceScripts.currentIndex().data()
@@ -2066,53 +2024,38 @@ class UI(PluginForm):
 
         sys.path.append(self.options['vtrace_scripts_dir'])
         
-        fname = selected.split(".py")[0]
+        fname = selected
+        modulename = fname.split(".py")[0]
+
+        #FIXME check to see if myhost exists, complain if it doesnt
+        agent = self.myhost.agent
 
         try:
-            _script = __import__(fname, globals(), locals())
+            _script = __import__(modulename)
         except Exception as detail:
+
             print detail
             self.rightClickMenuActive = False
             return
 
-        print "[*] Invoking %s.prep(%s)" % (selected, fname)
+        print "[*] Invoking %s.ToolbagTask.prep()" % (modulename)
+        agent.toolbagTask = _script.ToolbagTask(fname, self.myhost.agentData, self.myhost.serverData)
 
-        _script.task(None, None).prep()
+        # 'self' is the ui_obj, used by prep()
+        agent.toolbagTask.prep(self)
         self.rightClickMenuActive = False
-
         return
 
-    def pushVtraceScript(self):
-        if self.options['dev_mode']:
-            print "[D] pushVtraceScript: printing stack:"
-            traceback.print_stack()
-            
-        try:
-            selected = self.vtraceScripts.currentIndex().data()
-        except:
-            print "[!] No file selected"
-            self.rightClickMenuActive = False
-            return 
+    def runVtraceScript(self):
+        self.myhost.agent.toolbagTask.run(self)
 
-        sys.path.append(self.options['vtrace_scripts_dir'])
+    def processVTraceScript(self):
+        self.myhost.agent.toolbagTask.process(self)
+
+    def highlightAddressList(self, addresses, color=0xFF):
+        for addr in addresses:
+            self.provider.setColor(addr, color)
         
-        fname = selected.split(".py")[0]
-
-        data = open(self.options['vtrace_scripts_dir'] + os.sep + str(selected), 'r').read()
-        self.pushAgent(data, 'PYFILE', selected)
-
-        self.rightClickMenuActive = False
-
-
-    def pushAgent(self, data, opcode, filename, params=None, idx=None):
-        if self.options['dev_mode']:
-            print "[D] pushAgent: printing stack:"
-            traceback.print_stack()
-            
-        print "[*] Pushing data of length %d to agent" % len(data)
-        self.myhost.sendAgent(data, opcode, filename, params, idx)
-        
-
     def editUserScript(self):
         if self.options['dev_mode']:
             print "[D] editUserScript: printing stack:"
@@ -3887,14 +3830,11 @@ class UI(PluginForm):
             try:
                 #socket.setdefaulttimeout(2)
                 socket.setdefaulttimeout(None)
-                agent_id = self.myhost.addAgent(host, port, key)
-
+                self.myhost.addAgent(host, port, key)
                 print "[*] Sending agent a greeting"
-                self.myhost.sendAgent("WHY HELLO GOOD SIR", "greeting")
+                self.myhost.agent.connect()
+                self.myhost.agent.printmsg("Toolbag Connected")
 
-                self.agents[host] = agent_id
-
-                socket.setdefaulttimeout(None)
             except Exception as detail:
                 print detail
                 socket.setdefaulttimeout(None)
@@ -4031,11 +3971,7 @@ class UI(PluginForm):
 
 
         elif queue_type == "AGENT":
-           host = str(selected.text(0))
-
-           idx = self.agents[host]
-           self.myhost.delAgent(idx)
-           del self.agents[host]
+           self.myhost.delAgent()
 
            # except Exception as detail:
            #     print "[!] Failed to delete agent: %s" % detail
@@ -4180,6 +4116,12 @@ class UI(PluginForm):
             
             if pkt.opcode == "greeting":
                 self.showBalloon("%s (%s)" % (pkt.msg, pkt.ip), clickable=False)
+                return
+
+            #racksonracksonracks
+            elif pkt.opcode == "agentresults":
+                self.showBalloon("Agent results for %s" % pkt.filename, clickable=False)
+                self.global_hook.retvals[pkt.filename]=pickle.loads(pkt.msg)
                 return
 
             # IP : objname, objtype, data

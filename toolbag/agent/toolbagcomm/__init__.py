@@ -12,6 +12,7 @@ import signal
 import struct
 import binascii
 import subprocess
+from agentmanager import AgentManager
 import multiprocessing.managers as managers
 import Queue
 
@@ -188,10 +189,11 @@ class ToolbagHost:
         self.ip = ip
         self.port = port
         self.key = key
+        self.serverData = ip,port,key
+        self.agentData = None
 
         # things to track agents 
-        self.agents = dict()
-        self.agentidx = None
+        self.agent = None
 
         # peers (other Toolbag ussers)
         self.peers = dict()
@@ -226,32 +228,15 @@ class ToolbagHost:
 
     # add an agent
     def addAgent(self, ip, port, key):
-        print "+ Adding an agent at %s:%d" % (ip, port)
-        if self.agentidx == None:
-            self.agentidx = 0
-
-        self.agents[self.agentidx] = QueueClient(ip, port, key)
-        print "+ Done creating queue client"
+        print "[*] Adding an agent at %s:%d" % (ip, port)
+        self.agent = AgentManager((ip, port), key)
+        self.agentip = ip
+        self.agentport = port
+        self.agentkey = key
+        self.agentData = ip, port, key
         
-        ret = self.agentidx 
-        self.agentidx += 1
-        
-        return ret
-
-    def delAgent(self, idx):
-        del self.agents[idx] 
-
-    def sendAgent(self, msg, opcode, filename="", params=None, idx=None): 
-        if idx == None:
-            if self.agentidx == None:
-                raise NameError("No registered agents")
-
-            idx = self.agentidx - 1
-
-        header = (self.ip, self.port, self.key, opcode, filename, params)
-        packet = (header, msg)
-        self.agents[idx].send(packet)
-        
+    def delAgent(self):
+        del self.agent
 
     def end(self):
         # close the server queue
@@ -278,57 +263,6 @@ class ToolbagHost:
     def recv(self):
         return self.serverqueue.recv()
     
-
-# since toolbagAgent is _not_ within IDA
-# we can use the real multiprocessing "Process()"
-class ToolbagAgent:
-    def __init__(self, ip, port, key):
-        # the Agent queue server it listens on
-        self.agentdata = (ip, port, key)
-        self.queue = QueueClient(ip, port, key)
-        self.callbacks = {}
-        
-    # kill the agent
-    def end(self):
-        self.process.terminate()
-        sys.exit(0)
-
-    # register a callback to handle a specific opcode
-    def registerCallback(self, opcode, callback, args=()):
-       self.callbacks[opcode] = (callback, args)
-
-    # the main loop:
-    # this is a while(1) to receive data from the queue
-    # the opcode provided in the data is looked up in the callbacks
-    # if a callback is found, it is executed
-    def mainLoop(self):
-        while (1):
-            print "+ Agent waiting for data"
-            # wait for data (blocking)
-            data = self.queue.recv()
-
-            # use ToolbagPacket to decompose the data
-            pkt = ToolbagPacket(data)
-
-            print "+ message from %s:%i" % (pkt.ip, pkt.port)
-
-            # lookup the opcode in the callbacks 
-            if pkt.opcode in self.callbacks.keys():
-
-                # an opcode handler was found
-                print "+ calling opcode handler.."
-                callback, args = self.callbacks[pkt.opcode]
-
-                # if there are no args, just pass it the packet
-                # and the agentdata 
-                if args == None:
-                    callback(pkt, self.agentdata)
-
-                # otherwise they provided args, pass them to the handler
-                else:
-                    callback(pkt, self.agentdata, *args)
-            else:
-                print "+ No handler registered for this opcode: %s" % pkt.opcode
 
 # main function
 if __name__ == "__main__":

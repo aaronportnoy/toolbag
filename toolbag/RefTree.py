@@ -137,7 +137,12 @@ class RefTree(object):
         self.function_data[dst]['parents'] = list(parents)
 
         # reftree
-        children = set(self.function_data[src_func]['children'])
+        try:
+            children = set(self.function_data[src_func]['children'])
+        except KeyError:
+            self.add_func(src_func)
+            children = set(self.function_data[src_func]['children'])
+
         children.add(dst)
         self.function_data[src_func]['children'] = list(children)
 
