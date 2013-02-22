@@ -63,6 +63,9 @@ class properties():
 			lastM = idc.GetLastMember(sid)
 			arg_count = 0
 
+			if lastM - firstM > 0x1000:
+				return
+
 			for i in xrange(firstM, lastM):
 				mName = idc.GetMemberName(sid, i)
 				mSize = idc.GetMemberSize(sid, i)
