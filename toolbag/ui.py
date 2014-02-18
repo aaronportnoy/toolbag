@@ -3767,6 +3767,8 @@ class UI(PluginForm):
                         print "[!] There already exists a server object, delete it to add a new one."
                         return 
 
+	    #If this isn't windows32, this will fail. So let's initialize pypath
+	    pypath = ''
             if sys.platform == 'win32':
                 pypath = self.options['pypath_win32']
             elif sys.platform == 'darwin' or sys.platform == 'linux':
