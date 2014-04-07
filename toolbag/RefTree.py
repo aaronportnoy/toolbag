@@ -170,7 +170,7 @@ class MasterRefTree(RefTree):
         if self.proc == "pc":
             self.call_mnem = "call"
             self.jmp_mnem = "jmp"
-        elif self.proc == "arm" or proc == "ppc":
+        elif self.proc == "arm" or self.proc == "ppc":
             self.call_mnem = "bl"
         elif self.proc == "mips":
             self.call_mnem = "jalr"
