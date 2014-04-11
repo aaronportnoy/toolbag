@@ -10,5 +10,6 @@
 options = { 
                'example'          : True,
                'dev_mode'		  : False,
-               'coloring_enabled' : False,
+               'coloring_enabled' : True,
+               'enabled_tabs'           : ["Scripts"],
           }    
