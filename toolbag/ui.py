@@ -33,8 +33,8 @@ import pathfinder
 import analysis
 
 # Remote communication
-import toolbagcomm
-import ToolbagTask
+#import toolbagcomm
+#import ToolbagTask
 
 # IDA provider
 from providers import ida
@@ -3554,7 +3554,11 @@ class UI(PluginForm):
                     print "[*] Adding an edge from 0x%08x to 0x%08x" % (self.edge_source, self.edge_dest)
                 else:
                     print "[*] Adding an edge from 0x%016x to 0x%016x" % (self.edge_source, self.edge_dest)
+
+                # add the edge to both the master and the current reftree
                 self.master.addEdge(self.edge_source, self.edge_dest)
+                self.reftree.addEdge(self.edge_source, self.edge_dest)
+                
                 self.addToHistory(userEA=self.edge_dest)
                 self.addToHistory(userEA=self.edge_source)
 
