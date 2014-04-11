@@ -33,7 +33,11 @@ class IDA(base.Driver):
         return database.cxdown(ea)
 
     def getComment(self, ea):
-        return idc.GetCommentEx(ea, False)
+        res = idc.GetCommentEx(ea, False)
+        if not res:
+            return ""
+        else:
+            return res
 
     def getRptComment(self, ea):
         return idc.GetCommentEx(ea, True)

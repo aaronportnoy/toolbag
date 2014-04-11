@@ -3559,6 +3559,25 @@ class UI(PluginForm):
                 self.master.addEdge(self.edge_source, self.edge_dest)
                 self.reftree.addEdge(self.edge_source, self.edge_dest)
                 
+                # append a comment (dst) at the src
+                cur = self.provider.getComment(self.edge_source)
+
+                com = ""
+                if (len(cur) > 0):
+                    if self.options['architecture'] == "32":
+                        com = cur + "\n" + "0x%08x" % self.edge_dest
+                    else:
+                        com = cur + "\n" + "0x%016x" % self.edge_dest
+                else:
+                    if self.options['architecture'] == "32":
+                        com = "0x%08x" % self.edge_dest
+                    else:
+                        com = "0x%016x" % self.edge_dest
+                
+                self.provider.makeComment(self.edge_source, com)
+                self.provider.refreshView()
+                
+                # add both to history view
                 self.addToHistory(userEA=self.edge_dest)
                 self.addToHistory(userEA=self.edge_source)
 
