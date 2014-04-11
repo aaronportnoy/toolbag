@@ -413,7 +413,7 @@ class MasterRefTree(RefTree):
             for k, vals in attributes.iteritems():
 
                 # if its an address
-                if isinstance(k, int):
+                if isinstance(k, int) or isinstance(k, long):
                     for address_k, address_val in vals.iteritems():
                         if address_k == attr:
                             res[k] = vals
