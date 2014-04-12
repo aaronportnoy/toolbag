@@ -65,6 +65,8 @@ class properties():
 
 			if lastM - firstM > 0x1000:
 				return
+			if lastM >= 4294967295 or firstM >= 4294967295:
+				return
 
 			for i in xrange(firstM, lastM):
 				mName = idc.GetMemberName(sid, i)
