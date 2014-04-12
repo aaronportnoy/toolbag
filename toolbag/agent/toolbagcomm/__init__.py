@@ -150,7 +150,8 @@ class ToolbagHost:
     # ip, port, key are for our listening server Process/Queue
     # said Process/Queue should already be started before calling this
     def __init__(self, pypath, serverpath, ip, port, key):
-
+	#need self.proc to be initialized for linux
+	self.proc = ''
         print "[*] Spawning server process"
 
         plat = sys.platform
