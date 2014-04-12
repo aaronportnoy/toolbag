@@ -1,0 +1,990 @@
+
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.1//EN" "http://www.w3.org/TR/xhtml11/DTD/xhtml11.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+<meta http-equiv="content-type" content="text/html; charset=iso-8859-1"/>
+<link rel="stylesheet" type="text/css" href="default.css" media="screen"/>
+<title>IDA Toolbag</title>
+</head>
+
+<body>
+<a name="Top"></a>
+
+<div class="wrapper">
+
+    <div class="container">
+
+        <div class="main">      
+            
+            <div class="content">
+
+                
+				<div class="title">IDA Toolbag</div>
+				<p class="red">
+				<i>Moving reversing forward...</i>
+				</p>
+
+                <a name="Installation"></a>
+                <h2>Installation</h2>
+
+                <br>
+                
+                <p><b>Toolbag requires IDA version 6.2 or greater.</b></p>      
+                
+                <p><br>The toolbag code should be unpacked to: </p>
+
+                <blockquote><p>C:\Users\username\AppData\Roaming\Hex-Rays\IDA Pro</p></blockquote>
+
+                or<br><br>
+
+                <blockquote><p>C:\Documents and Settings\username\Application Data\Hex-Rays\IDA Pro</p></blockquote>
+                
+                <p>..as IDA executes the idapythonrc.py file located therein on load.</p>
+
+                <p>
+                <pre>
+C:\Users\username\AppData\Roaming\Hex-Rays\IDA Pro>ls -l
+    total 8
+    -rw-rw-rw-   1 user     group         211 Mar 30 20:27 AUTHORS.txt
+    -rw-rw-rw-   1 user     group        2648 Apr  1 21:17 README.txt
+    -rw-rw-rw-   1 user     group          47 Mar 30 20:27 __root__.py
+    -rw-rw-rw-   1 user     group         153 Mar 30 20:29 __root__.pyc
+    drwxrwxrwx   1 user     group           0 Mar 30 20:27 app
+    drwxrwxrwx   1 user     group           0 Mar 31 19:20 base
+    -rw-rw-rw-   1 user     group        1901 Mar 31 22:34 idapythonrc.py
+    drwxrwxrwx   1 user     group           0 Mar 31 19:20 misc
+    drwxrwxrwx   1 user     group           0 Apr  3 16:01 toolbag
+    drwxrwxrwx   1 user     group           0 Mar 30 20:27 user
+
+C:\Users\username\AppData\Roaming\Hex-Rays\IDA Pro>
+</pre>
+</p>
+                <br><br>
+
+                <p>You will also need the pre-built PySide binaries from Hex-Rays available to licensed users on their site: <a href="http://hex-rays.com/idapro/ida/windows_pyside_python26_package.zip">http://hex-rays.com/idapro/ida/windows_pyside_python26_package.zip</a>. and of course Python 2.6 and <a href="http://code.google.com/p/idapython/downloads/list">IDAPython</a> (comes with IDA) for Python 2.6.</p>
+
+                <br><br>
+                <div align="right"><a href="docs.html#Top">[top]</a></div>
+
+                <a name="ThirdParty"></a>
+                <h3>Third Party Code</h3>
+
+                <p>In order to enable remote debugger communication, download vdb from <a href="http://visi.kenshoto.com/releases/">http://visi.kenshoto.com</a> and place it in the toolbag\agent subdirectory as <b>dbg</b>.</p>
+
+                <div align="right"><a href="docs.html#Top">[top]</a></div>
+
+                <a name="Configuration"></a>
+                <h2>Configuration</h2>
+
+                <p><br>Configuration options are defined in <b>toolbag\config.py</b>. You can override any of these settings by creating a <b>userconfig.py</b> in the same directory with simply a dictionary named options, like so:</p>
+                <blockquote>
+                <pre>
+options = { 
+    # default tabs enabled
+    'enabled_tabs'           : ["File System", "Pathfinding"],
+    
+    # hotkeys    
+    'history_hotkey'         : 'Ctrl-H',
+
+    # aesthetics
+    'font_name'              : 'Tahoma',
+
+    # misc
+    'editor'                 : 'C:\\windows\\system32\\notepad.exe',
+
+    # milliseconds to poll queue
+    'queue_interval'         : 3000,
+
+    # path finding colors
+    'path_coloring_enabled'  : True,
+}
+            </pre>
+
+                </blockquote>
+
+
+            <div align="right"><a href="docs.html#Top">[top]</a></div>
+
+
+            <a name="PlatformNotes"></a>
+                <h2>Platform Notes</h2>
+
+                <p><br>This is all very windows-centric code. Also, it's only been tested heavily on IDA 6.2 disassembling x86. Basic functionality has been confirmed to work on PPC, MIPS, x64, and ARM.</p>
+
+                <br>
+                <p><b>!! IMPORTANT !!</b><br> If you want to load another IDB and use toolbag, close IDA entirely and then open your new module and load the tool. If you don't there are some state issues we haven't worked out yet that will screw things up.</p>
+
+            <div align="right"><a href="docs.html#Top">[top]</a></div>
+
+            <a name="Instantiation"></a>
+                <h2>Instantiation</h2>
+                <br>
+                <p>Toolbag must be imported once you load a module in IDA. We recommend you wait for IDA's auto-analysis to finish before importing our code. When IDA shows "AU: idle" in its status bar on the bottom left of the UI, go ahead and import toolbag via the Python command line within IDA.</p>
+
+                <p>When you import toolbag for the first time, it begins creating a SQLite database in the same directory as your IDB. You only have to do this once. When you import toolbag on subsequent loads of your IDB it should find the .DB file it generated and instantly fire up the toolbag UI.</p>
+
+                <p>When creating the initial DB file, toolbag iterates over all the functions in your module and inserts edge records into our SQLite database to indicate when a function calls another. Our code also either adds a new segment to your IDB (whose name is specified in your options as <b>'segment_name'</b>) or creates a new netnode, depending on what the value of <b>'file_system_type'</b> is. We'll get to the filesystem and what it is used for later. For the segment file system implementation details, please see our <a href="http://dvlabs.tippingpoint.com/blog/2012/02/06/mindshare-ida-inception">blog post</a> on the topic.</p>
+
+                <p>Here's the sample output of toolbag run on calc.exe for the first time:</p>
+
+                <p>
+<pre>                        
+Python>import toolbag
+[*] Initializing toolbag
+--------------------------------------------------------------------------------
+[*] Options:
+        user_scripts_dir => C:\\Users\\aaron\\AppData\\Roaming\\Hex-Rays\\IDA Pro\user\bin
+        dev_mode => False
+        func_path_color => 16711935
+        history_color => 21760
+        highlighted_background => darkgreen
+        file_name => calc.DB
+        coloring_enabled => False
+        history_hotkey => Ctrl-Space
+        bb_path_start => Ctrl-Shift-S
+        enabled_tabs => ['File System', 'Queues']
+        segment_name => .zip
+        create_mark_hotkey => Alt-M
+        full_file_name => C:\tmp\sample\calc.DB
+        font_name => Courier
+        font_size => 8
+        path_start => Ctrl-S
+        path_end => Ctrl-E
+        background_color => gainsboro
+        verbosity => 10
+        highlighted_foreground => white
+        queue_interval => 1500
+        path_coloring_enabled => False
+        db_location => disk
+        editor => C:\windows\system32\notepad.exe
+        jump_mark_hotkey => Ctrl-M
+        bb_path_end => Ctrl-Shift-E
+        syntax_coloring => False
+        font_color => black
+        queue_reminder => 6
+        toolbag_dir => C:\\Users\\aaron\\AppData\\Roaming\\Hex-Rays\\IDA Pro\toolbag
+        remote_host => 192.168.1.51
+        segment_size => 2097152
+        bb_path_color => 255
+--------------------------------------------------------------------------------
+[*] fs.py: didn't find an existing segment, making a new one.
+[*] segment.py: there is room above current segments
+  5. Creating a new segment  (01060000-01260000) ... ... OK
+[*] __init__.py: loading DB file from disk
+[!] Unable to load the database file on disk at C:\tmp\sample\calc.DB
+[*] Creating a new database file on disk
+[*] db.py: Creating a new DB file
+WARNING:root:defaulting to maintenance account (session id 0)
+[*] Successfully created 4 new functions
+[*] db.py: Processing 0x0100a455 (250 of 1933)
+[*] db.py: Processing 0x01012cf5 (500 of 1933)
+[*] db.py: Processing 0x01018506 (750 of 1933)
+[*] db.py: Processing 0x0101f639 (1000 of 1933)
+[*] db.py: Processing 0x01032406 (1250 of 1933)
+[*] db.py: Processing 0x0103b0a8 (1500 of 1933)
+[*] db.py: Processing 0x010447a7 (1750 of 1933)
+[*] db.py: Processing 0x0105070a (1933 of 1933)
+[*] Failed to process 9 functions
+[*] Successfully processed 1924 functions
+[*] No longer any data in the key store: File is not a zip file
+[!] Tried to load a file default.sess that may not exist
+</pre>
+                </p>
+
+                <p>Note: the "Failed to process 9 functions" is usually due to IDA analysis issues and is not critical. Also, the "Tried to load a file default.sess" is not an error in this context.</p>
+
+        <div align="right"><a href="docs.html#Top">[top]</a></div>
+
+         <a name="Usage"></a>
+                <h2>Usage</h2>
+                
+                <br>
+                <a name="ToolbagUI"></a>
+                <h3>The Toolbag UI</h3>
+                <p>When the toolbag UI launches you will be presented with a dockable widget that looks something like this:</p>
+                <br>
+                <center>
+                <a href="img/ss/toolbag_init.png"><img src="img/ss/toolbag_init.png" width="75%"></img></a>
+            </center>
+
+            <br><br>
+            <p>You can drag this widget around and dock it wherever you'd like, or leave it free-floating:</p>
+            <br><br>
+            <center>
+            <a href="img/ss/toolbag_init_floating.png"><img src="img/ss/toolbag_init_floating.png" width="75%"></img></a>
+            </center>
+
+            <br><br>
+            <p>The UI has several tabs available to you. The ones shown can be configured by the <b>'enabled_tabs'</b> option in userconfig.py. Additionally, you can enable or disable a tab via the View menu option (some tabs are required and cannot be disabled):</p>
+            
+            <br><br>
+            <center>
+            <a href="img/ss/toolbag_view_menu.png"><img src="img/ss/toolbag_view_menu.png" width="75%"></img></a>
+            </center>
+
+
+            <br><br><br>
+
+            <div align="right"><a href="docs.html#Top">[top]</a></div>
+
+            <a name="HistoryTab"></a>
+            <h3>The History Tab</h3>
+
+            <p>The history tab is used to keep track of code locations you've marked as interesting (not to be confused with IDA's marks). To add an item to the history view, simply hit the key combo defined by <b>'history_hotkey'</b>. The default is <b>Ctrl+Space</b>. When you hit this combo a new entry will appear in the first pane. Additionally, if you <b>'coloring_enabled'</b> set to True the basic block will be colored the value of <b>'history_color'</b>.</p>
+
+            <p>When you add a location to the history view, the SQLite database is queried to determine child-parent relationships between the function you added and any others currently in the history's pane. So, if you add a child of a function already in your history view it will be relocated as such in the pane:</p>
+
+            <br><br>
+            <center>
+            <a href="img/ss/history_add.png"><img src="img/ss/history_add.png" width="75%"></img></a>
+            </center>
+
+            <br><br><br>
+
+            <p>Adding parents will relocate the items appropriately. Any of the entries in the tree can be clicked and will result in IDA jumping to its address. We've found that these graphs visually help us better understand code flow when reversing:</p>
+
+            <br><br>
+            <center>
+            <a href="img/ss/history_add_lots.png"><img src="img/ss/history_add_lots.png" width="75%"></img></a>
+            </center>
+            <br><br><br>
+
+            <p>You can also clear the tree with the <b>Clear History</b> button. You can save the history for transferring to others or locally using the <b>Save History</b> button (we'll get to how this works later).</p>
+
+            <p>The <b>Show Strings</b> and <b>Show Imports</b> buttons will, upon a press, toggle new panes that show the imported functions or strings referenced by any child in a specific subtree. A screenshot probably best demonstrate this:<p>
+
+
+            <br><br>
+            <center>
+            <a href="img/ss/history_imports_strings.png"><img src="img/ss/history_imports_strings.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+
+            <p>Note that the new panes have a column <b>Caller</b> which specifies which of the children below the currently selected one called that import or referenced that string, and the relevant address.</p>
+
+            <p>If you right-click any item in the first pane you can query the database for nearby functions:<p>
+
+            <br>
+            <center>
+            <a href="img/ss/query_db.png"><img src="img/ss/query_db.png" width="50%"></img></a>
+            <br><br><br>
+            <a href="img/ss/query_db_dialog.png"><img src="img/ss/query_db_dialog.png" width="40%"></img></a>
+            </center>
+            <br><br>
+
+            <p>This queries the database for functions within 2 calls from the selected one and displays a new, dockable, widget:</p>
+
+            <br><br>
+            <center>
+            <a href="img/ss/custom_query.png"><img src="img/ss/custom_query.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+            <p>You can also supply a negative depth to display callers:</p>
+
+            <br><br>
+            <center>
+            <a href="img/ss/query_db_neg.png"><img src="img/ss/query_db_neg.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+
+            <p>As you may have noticed, you can search the disassembly of any of the functions listed (regex is supported via the checkbox, colors can be changed via <b>'highlighted_background'</b> and <b>highlighted_foreground'</b>):</p>
+            
+            <br><br>
+            <center>
+            <a href="img/ss/custom_query_res.png"><img src="img/ss/custom_query_res.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+            <p>The last thing to mention about the history tab (for now) is that whatever tree is present in the pane when you quit IDA is automatically saved and restored next time you open your IDB and import toolbag. That was the default.sess error that was shown when toolbag was first launched. As it was the first time running the tool, there was no default view to load.</p>
+
+            <br><br>
+
+            <div align="right"><a href="docs.html#Top">[top]</a></div>
+
+            <a name="Marks"></a>
+            <h3>Marks</h3>
+
+            <p>By default, toolbag overrides IDA's marking system. This can be changed by adding new values for the <b>'create_mark_hotkey'</b> and <b>'jump_mark_hotkey'</b> keys in userconfig.py. When toolbag is running, if you hit the mark key combo you'll see this dialog:</p>
+            
+            <br><br>
+            <center>
+            <a href="img/ss/create_mark.png"><img src="img/ss/create_mark.png" width="75%"></img></a>
+            </center>
+            <br><br>            
+
+            <p>The toolbag marking system allows you to specify an optional <b>Group</b> which you can later sort on. This is useful for keeping track of reversing sessions, or which marks were added by who (if you're collaborating).</p>
+
+            <p>When a user invokes the key combo for jumping to a mark, the toolbag UI will switch focus to the <b>Global Marks</b> tab which contains click-able entries:</p>
+
+            <br><br>
+            <center>
+            <a href="img/ss/jump_mark.png"><img src="img/ss/jump_mark.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+            <p>Toolbag also introduces the concept of <b>Local Marks</b>. Basically, if you are inside a function that is currently in your history tree and there is a mark within that function, it will be displayed in the pane below the history tree, like so:</p>
+
+            <br><br>
+            <center>
+            <a href="img/ss/local_marks.png"><img src="img/ss/local_marks.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+            <p>It should be noted that there is no difference between local vs global marks, just how they are displayed in the UI. Also, the marks are not stored in the IDB and are not tied in any way to IDA's marks. Instead, they are stored as attributes inside the SQLite database.</p>
+
+
+            <p>Finally, you can delete any mark entries by right-clicking them and choosing <b>Delete</b>.</p>
+
+            <br><br>
+
+            <div align="right"><a href="docs.html#Top">[top]</a></div>
+
+            <a name="Merging"></a>
+            <h4>Merging</h4>
+
+            <p>You can merge multiple .sess files (trees) into the History Tab. As an example, shown below we will load test.sess and test2.sess independently so you can see their contents:</p>
+
+
+            <br><br>
+            <center>
+            <a href="img/ss/merge_sess_load1.png"><img src="img/ss/merge_sess_load1.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+            <br><br>
+            <center>
+            <a href="img/ss/merge_sess_load1_.png"><img src="img/ss/merge_sess_load1_.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+            <br><br>
+            <center>
+            <a href="img/ss/merge_sess_load2.png"><img src="img/ss/merge_sess_load2.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+            <br><br>
+            <center>
+            <a href="img/ss/merge_sess_load2_.png"><img src="img/ss/merge_sess_load2_.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+            <p>The above was just to show you the contents of those sessions so that the resulting merge has some context. At this point, we'll clear the history tab via the Clear button and go ahead and merge test.sess and test2.sess from the file system tab's right-click context menu:</p>
+
+            <br><br>
+            <center>
+            <a href="img/ss/merge_sess_merge.png"><img src="img/ss/merge_sess_merge.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+                <p>Here is the resulting merge:</p>
+
+
+            <br><br>
+            <center>
+            <a href="img/ss/merge_sess_merged.png"><img src="img/ss/merge_sess_merged.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+            <div align="right"><a href="docs.html#Top">[top]</a></div>
+
+
+            <a name="Comments"></a>
+            <h3>Comments</h3>
+
+            <p>Comments are transparently hooked when toolbag is loaded using idaapi.UI_Hooks. When a user attempts to add a comment (repeatable or otherwise) the normal IDA popup is presented and everything behaves as IDA normally would. What goes on behind the scenes is that Toolbag saves the information to the file system. This allows the user to push comments to peers from the file system tab's right-click context menu (see the <a href="docs.html#Filesystem">Filesystem</a> section for more information).</p>
+
+            <p>The receiving user can apply the marks received using the same right-click context menu (via the <b>Apply</b> option). In order to not clobber any comments they may already have, a new UI pops up showing any potential conflicts:</p>
+
+            <br><br>
+            <center>
+            <a href="img/ss/sync_comments_apply.png"><img src="img/ss/sync_comments_apply.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+            <br><br>
+            <center>
+            <a href="img/ss/sync_comments_newwindow.png"><img src="img/ss/sync_comments_newwindow.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+
+            <p>Entries in this UI can be selected individually via Ctrl, Shift, or the <b>Select All</b> button:</P>
+
+            <br><br>
+            <center>
+            <a href="img/ss/sync_comments_multiselect.png"><img src="img/ss/sync_comments_multiselect.png" width="75%"></img></a>
+            </center>
+            <br><br>                
+
+            <p>When the <b>Apply</b> button is pressed, the comments are applied to the user's IDB:</p>
+
+            <br><br>
+            <center>
+            <a href="img/ss/sync_comments_applied.png"><img src="img/ss/sync_comments_applied.png" width="75%"></img></a>
+            </center>
+            <br><br>                
+
+            <p>Soon this will also be supported with stack variables, arguments, function names, and location names.</p>
+
+
+            <div align="right"><a href="docs.html#Top">[top]</a></div>
+
+            <a name="Filesystem"></a>
+            <h3>File System</h3>
+            <br>
+
+            <p>Toolbag uses a pseudo-filesystem for storing various... things. When toolbag is initialized there are two ways it can initialize the FS. If the configuration option <b>'file_system_type'</b> is set to <b>'segment'</b>, the code will create a new segment (whose name is configurable by <b>'segment_name'</b>) that contains a 4-byte header and a ZIP file. You can read a bit about the implementation <a href="http://dvlabs.tippingpoint.com/blog/2012/02/06/mindshare-ida-inception">here</a>. If the <b>'file_system_type'</b> is set to <b>'netnode'</b> the code will use the idaapi.netnode API to store files.</p>
+
+            <p>The file system looks something like this:</p>
+
+            <br><br>
+            <center>
+            <a href="img/ss/default_fs.png"><img src="img/ss/default_fs.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+            <p>You can add arbitrary files to the toolbag file system from your actual file system using the <b>Add File</b> option in the right-click context menu. You can also export any file via the <b>Export</b> option, and delete them with <b>Delete</b>.</p>
+
+            <p>More useful, however, is the ability to store other objects from toolbag into the file system. For example, from the History tab, you can use the <b>'Save History'</b> button to store the current tree into the file system for later use:</p>
+
+            <br><br>
+            <center>
+            <a href="img/ss/save_history.png"><img src="img/ss/save_history.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+            <br><br>
+            <center>
+            <a href="img/ss/save_history2.png"><img src="img/ss/save_history2.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+            <p>History objects are saved with a <b>.sess</b> extension. If you right-click them from the file system view and choose <b>Load in History</b>, toolbag will clear the current data in your History, load the .sess file, and switch focus to the History tab.</p>
+
+            <br><br>
+            <div align="right"><a href="docs.html#Top">[top]</a></div>
+
+            <a name="Pathfinding"></a>
+            <h3>Pathfinding</h3>
+
+            <p>The pathfinding tab allows you to plot all possible paths either from a function to another function or a basic block to another basic block. </p>
+
+            <p>To use the function-level pathfinding, you mark the start via the key combo defined by <b>'path_start'</b> and the end via the <b>'path_end'</b> one:</p>
+
+                        <br><br>
+            <center>
+            <a href="img/ss/pathfinding_fstart.png"><img src="img/ss/pathfinding_fstart.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+            <center>
+            <a href="img/ss/pathfinding_fend.png"><img src="img/ss/pathfinding_fend.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+            <p>Once a start and end is defined, you can click <b>Plot Function Path</b> to have Toolbag query our database and build a graph for you:</p>
+
+            <center>
+            <a href="img/ss/pathfinding_graph_zoomedout.png"><img src="img/ss/pathfinding_graph_zoomedout.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+            <p>You can undock the result and zoom in:</p>
+
+            <center>
+            <a href="img/ss/pathfinding_graph_zoomedin.png"><img src="img/ss/pathfinding_graph_zoomedin.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+            <p>All the nodes in the graph are click-able and will jump your disassembly view to the location:</p>
+
+            <center>
+            <a href="img/ss/pathfinding_clickable.png"><img src="img/ss/pathfinding_clickable.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+            <p>To use the basic block-level pathfinding, you use the hotkeys defined by <b>'bb_path_start'</b> and <b>'bb_path_end'</b>.
+
+            <p>You can also enable coloring of the nodes by setting <b>'path_coloring_enabled'</b> to True. The colors are specified by <b>'func_path_color'</b> and <b>'bb_path_color'</b>.</p>
+
+            <p>To plot a path to a basic block, you simply set your cursor to the destination and then click the <b>Plot Basic Block Path to Current EA</b> button in the Pathfinding tab:</p>
+
+            <br><br>
+            <center>
+            <a href="img/ss/pathfinding_bb.png"><img src="img/ss/pathfinding_bb.png" width="75%"></img></a>
+            </center>
+            <br><br><br>
+
+            <p>When you click the button, a new window pops up containing all the paths from the function start to the basic block you are currently at. The nodes of the graph are click-able. Just for fun, here is an example run on an ARM binary:</p>
+
+            <br><br>
+            <center>
+            <a href="img/ss/pathfinding_bb2.png"><img src="img/ss/pathfinding_bb2.png" width="75%"></img></a>
+            </center>
+            <br><br><br>        
+
+            <p>If you hit F3 from this new window (or choose <b>Color</b> from the right-click context menu) the basic blocks in the paths will be colored the color defined by your <b>'bb_path_color'</b> config option:</p>
+
+            <br><br>
+            <center>
+            <a href="img/ss/pathfinding_bb3.png"><img src="img/ss/pathfinding_bb3.png" width="75%"></img></a>
+            </center>
+            <br><br><br>    
+
+            <p>If you would like to plot a new path, simply set your cursor to the new location and click the button again. If you color the new path, the old path gets reset to your default node color:</p>
+
+            <br><br>
+            <center>
+            <a href="img/ss/pathfinding_bb4.png"><img src="img/ss/pathfinding_bb4.png" width="75%"></img></a>
+            </center>
+            <br><br><br>    
+
+            <br><br>
+            <center>
+            <a href="img/ss/pathfinding_bb5.png"><img src="img/ss/pathfinding_bb5.png" width="75%"></img></a>
+            </center>
+            <br><br><br>    
+
+            <br><br>
+            <center>
+            <a href="img/ss/pathfinding_bb6.png"><img src="img/ss/pathfinding_bb6.png" width="75%"></img></a>
+            </center>
+            <br><br><br>    
+
+            <div align="right"><a href="docs.html#Top">[top]</a></div>
+
+            <a name="UserScripts"></a>
+            <h3>User Scripts</h3>
+
+            <p>The user scripts tab enables you to quickly execute python files located in the directory specified by <b>'user_scripts_dir'</b>. This pane is populated dynamically and you can simply double-click any item to execute it. Also, if you right-click a file in this view you can choose <b>Edit</b> and the program defined by <b>'editor'</b> will be executed on the file.</p>
+
+            <br><br>
+            <center>
+            <a href="img/ss/user_scripts.png"><img src="img/ss/user_scripts.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+            <p>Included in Toolbag are a couple simple scripts providing various pieces of functionality. Some are explained below.</p>
+
+
+            <a name="HighlightCalls"></a>
+            <h4>highlight_calls.py</h4>
+
+            <p>This script is very simple. It traverses the current function (including function chunks) and looks for any 'call' instruction, then it highlights that line in red.</p>
+            <br><br>
+            <div align="right"><a href="docs.html#Top">[top]</a></div>
+
+
+            <a name="CopyEA"></a>
+            <h4>CopyEA.py</h4>
+
+            <p>This script sets the hotkey <b>'z'</b> to print to the Output window a WinDBG style breakpoint for the current address, using the offset from the module base.</p>
+            <br><br>
+            <div align="right"><a href="docs.html#Top">[top]</a></div>
+
+
+            <a name="Vtable2Structs"></a>
+            <h4>vtable2structs.py</h4>
+
+            <p>This script assumes you have useful symbols. It searches the entire binary for any symbol containing the substring "vftable". For any it finds, it creates an IDA structure and adds elements for every function pointer in the vftable. For example, these structures were created dynamically using this script:</p>
+
+            <br><br>
+            <center>
+            <a href="img/ss/structs_created.png"><img src="img/ss/structs_created.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+            <div align="right"><a href="docs.html#Top">[top]</a></div>
+
+
+	    <a name="DynamicEdges"></a>
+	    <h4>simple_dynamic_edges.py</h4>
+
+            <p>I wrote this script when I encounted the function dispatching outlined in my <a href="https://thunkers.net/%7Edeft/code/toolbag/blog.exodusintel.com/2012/08/29/when-wrapping-it-up-goes-wrong/">blog post</a> on a vulnerability I discovered in EMC NetWorker.</p>
+
+            <p>The code within nsrd.exe had a switch table that loaded a different function pointer into a register depending on which case in the table was hit. Then, a 'call reg' was used to transfer control to that function after the switch had populated the register. The switch cases looked like this:
+
+            <br><br>
+            <center>
+	    <a href="img/ss/dynamic_call_cases.png"><img src="img/ss/dynamic_call_cases.png" width="75%"></img></a>
+	    </center>
+            <br><br>
+
+	    <p>The dynamic call occurred here:</p>
+           
+            <br>
+	    <br>
+            <center>
+            <a href="img/ss/dynamic_call_ebx.png"><img src="img/ss/dynamic_call_ebx.png" width="55%"></img></a>
+	    </center>
+            <br><br>
+
+            <p>simple_dynamic_edges.py can be launched via the User Scripts pane with a double-click. To use it, place your cursor over the source of the dynamic call (the call ebx above). Then, when the script is invoked, this dialog pops up:</p>
+
+            <br><br>
+	    <center>
+            <a href="img/ss/dynamic_edges_pattern.png"><img src="img/ss/dynamic_edges_pattern.png" width="55%"></img></a>
+            </center>
+            <br><br>
+
+            <p>The "pattern" to be entered is used to locate all the places where ebx is populated with a function pointer. In this case, anything that has a 'mov ebx, offset ___________' will be matched. When "Go" is clicked, all such instructions are located and Toolbag adds an edge from the 'call ebx' to the function reference discovered via the search. The results are displayed in the output window:</p>
+
+            <br><br>
+            <center>
+	    <a href="img/ss/dynamic_edges_results.png"><img src="img/ss/dynamic_edges_results.png" width="75%"></img></a>
+            </center>
+ 
+	    <br><br>
+            <div align="right"><a href="docs.html#Top">[top]</a></div>
+	
+
+            <a name="Queues"></a>
+            <h3>Queues</h3>
+
+            <p>The Queues tab allows you to send and receive data from other toolbag users. To do so, you can set up a server by specifying your local IP, port and a key passphrase that subscribers must know in order to push you data:</p>
+
+            <br><br>
+            <center>
+            <a href="img/ss/queues_server.png"><img src="img/ss/queues_server.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+            <p>Once you have a server set up, a peer can subscribe to you (assuming they know the key):</p>
+
+            <br><br>
+            <center>
+            <a href="img/ss/queues_peer.png"><img src="img/ss/queues_peer.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+
+            <p>When this occurs, the user running the server is notified via a balloon-style popup:</p>
+
+
+            <br><br>
+            <center>
+            <a href="img/ss/queues_subscription.png"><img src="img/ss/queues_subscription.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+
+            <p>At this point, peers can push data to the server. If the user running the server wanted to push data back, the receiving client must set up a server of their own.</p>
+
+            <p>Arbitrary objects can be shared between Toolbag users. For example, anything in the filesystem can easily be pushed:</p>
+
+            <br><br>
+            <center>
+            <a href="img/ss/queues_push_fs.png"><img src="img/ss/queues_push_fs.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+            <p>...and received by the client:</p>
+
+            <br><br>
+            <center>
+            <a href="img/ss/queues_pending_data.png"><img src="img/ss/queues_pending_data.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+            <br><br>
+            <center>
+            <a href="img/ss/queues_recvd_fs.png"><img src="img/ss/queues_recvd_fs.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+            <p>The receiving client can decide what to do with the data. It is not used until the Toolbag user decides to <b>Store</b> it, at which point it is saved to their file system:</p>
+
+            <br><br>
+            <center>
+            <a href="img/ss/queues_recvd.png"><img src="img/ss/queues_recvd.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+            <br><br>
+            <center>
+            <a href="img/ss/queues_store.png"><img src="img/ss/queues_store.png" width="45%"></img></a>
+            </center>
+            <br><br>
+
+            <p>In addition so sharing arbitrary objects from the file system, users can push marks or history trees directly from their respective panes:</p>
+
+            <br><br>
+            <center>
+            <a href="img/ss/queues_push_marks.png"><img src="img/ss/queues_push_marks.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+            <br><br>
+            <center>
+            <a href="img/ss/queues_push_history.png"><img src="img/ss/queues_push_history.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+            <p>The file system tab checks the extensions on saved files and allows the user to act on certain types. For example, anything ending in <b>.sess</b> is assumed to be a history tree and the user is able to choose to <b>Load in History</b> at which point their current history tree is cleared and the new one is loaded from the file system:</p>
+
+            <br><br>
+            <center>
+            <a href="img/ss/queues_load_history.png"><img src="img/ss/queues_load_history.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+            <p>This functionality applies to marks as well. They are denoted by their <b>.marks</b> extension. The Toolbag user can choose to <b>Apply</b> marks from a saved file (note that when this is invoked, the marks are stored in the SQLite DB as attributes of the function):</p>
+
+            <br><br>
+            <center>
+            <a href="img/ss/queues_apply_marks.png"><img src="img/ss/queues_apply_marks.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+            <p>Finally, it should be noted that a user can reject anything sent to them from anyone via the <b>Reject</b> option in the Queues right-click context menu.</p>
+
+            <p><b>Security Note: Yes, deserializing arbitary objects sent from possibly unknown users could be a ... problem. All objects received are not deserialized until the user chooses to store them. However, if someone guesses your key and you choose to store an object from them, you suck at passwords and deserve what comes.</b></p>
+
+            <div align="right"><a href="docs.html#Top">[top]</a></div>
+
+            <br><br><br>
+
+            <a name="Analysis"></a>
+            <h3>Function Analysis</h3>
+
+	    <p>The initial creation of the Toolbag DB is populated with function attribute data. This information can be accessed by launching the "Function Queries" pane via View->Function Analysis:</p>
+
+
+	    <p>
+	    <center>
+            <a href="img/ss/query_launch.png"><img src="img/ss/query_launch.png" /></a>
+            </center>
+            </p>
+
+            <p>The query pane will appear with an example matching engine function and its corresponding results displayed.</p>
+
+            <p>
+            <center>
+            <a href="img/ss/query_pane.png"><img src="img/ss/query_pane.png" width="75%"/></a>
+            </center>
+            </p>   
+
+	    <p>The table can be sorted by clicking its corresponding column label. Currently every column sorts as if its contents were strings; this will be fixed in the future to sort using actual data type. Double clicking an item in the "Address" column result in IDA jumping to that address.</p>
+
+            <p>
+            The free-form text field allows you to code, in Python, a matching engine that specifies which function items to display. This function must have the name "myengine" and should be coded such that it returns True for functions with attributes that satisfy a match. For example,
+            </p> 
+
+            <p>
+<pre>
+def myengine(attr): 
+    return ((attr['numArgs'] > 2) and (attr['isRecursive'] == False))
+</pre>
+            </p>
+
+            <p>
+            Will result in all non-recursive functions with more than 2 arguments being displayed in the table. The most up-to-date list of attributes available and general guidance are provided in the text window upon initially launching the pane. Some attributes you can query include: whether the function is a leaf node (isLeaf), how many arguments it has (numArgs), how many cross references there are to it (xrefsTo), if the function is an export (isExport), the size of the function (funcSize), if the function has a stack cookie (hasCookie), how many cross references originate from within the function (xrefsFrom), how many basic blocks it has (numBlocks), how many function chunks it has (numChunks), and if the function is self-recursive (isRecursive).
+            </p>
+
+
+            <p>
+            Query results can be exported to the toolbag <a href="docs.html#Filesystem">file system</a> using the export button. 
+            </p>
+
+            <p>
+            <center>
+            <a href="img/ss/query_export.png"><img src="img/ss/query_export.png" width="75%"/></a>
+            </center>
+            </p>
+
+            <p>
+            <center>
+            <a href="img/ss/query_filesystem.png"><img src="img/ss/query_filesystem.png" width="75%"/></a>
+            </center>
+            </p>
+
+            <p>
+            This file can then be loaded into the History pane via a right-click and selection of "Load in History".
+            </p>
+
+            <div align="right"><a href="docs.html#Top">[top]</a></div>
+
+
+            <a name="Advanced"></a>
+            <h2>Advanced</h2>
+            <br><br>
+
+            <a name="AddingEdges"></a>
+            <h3>Adding Edges</h3>
+            <p>Many times IDA doesn't populate cross references originating from dynamic calls, like so:</p>
+            <br><br>
+
+            <center>
+            <a href="img/ss/before_edges.png"><img src="img/ss/before_edges.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+            <p>If you are aware of where such a call might go (say you've discovered the object and it's virtual function table), you can add the relevant edges to the Toolbag database in two ways. The benefit of doing this is that future queries (like when using Query DB functionality) will respect the new relationships.</p>
+
+            <p>The first way of adding edges is simply by clicking the <b>Add Edge(s)</b> button within the history pane. When invoked, a popup will appear asking for the hexadecimal address of the source (in this case, the address of the 'call eax').</p>
+            <br><br>
+
+            <center>
+            <a href="img/ss/add_edge_source.png"><img src="img/ss/add_edge_source.png"></img></a>
+            </center>
+            <br><br>
+
+            <p>Once you click OK, you will be prompted to add the destination in very much a similar manner, except that you can optionally provide a comma-separated list of addresses:</p>
+
+            <br><br>
+            <center>
+            <a href="img/ss/add_edge_dest.png"><img src="img/ss/add_edge_dest.png"></img></a>
+            </center>   
+            <br><br>
+
+            <p>When you add both a source and a destination, the edge is added to the database and the history view is updated appropriately:</p>
+            <br><br>
+
+            <center>
+            <a href="img/ss/single_edge_added.png"><img src="img/ss/single_edge_added.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+            <p>This process can be a bit tedious when you find a large vtable like this one that you'd like to add edges to:</p>
+            <br><br>
+
+            <center>
+            <a href="img/ss/destination_vtable.png"><img src="img/ss/destination_vtable.png" width="75%"></img></a>
+            <br><br>
+            </center>
+
+            <p>To make this a bit easier, we've added a couple shortcuts. If you press the key combo defined by <b>'add_edge_src'</b> (default is <b>Ctrl-[</b>) the address at the cursor is set to the source. Then, you can navigate to your destination and hit the key combo defined by <b>'add_edge_dst'</b> (default is <b>Ctrl-]</b>). When you do this, one of two things happens. If your current address is within <b>code</b> Toolbag will simply add the one cross reference from source to destination. However, if your current address is in <b>data</b> Toolbag will look for a contiguous block of code pointers. For each it finds, it will add an edge from source to that code pointer's target. Then, it will update the source with a comment showing all the destinations:</p>
+            <br><br>
+
+            <center>
+            <a href="img/ss/dest_edges_added.png"><img src="img/ss/dest_edges_added.png" width="110%"></img></a>
+            <br><br><br><br>
+            <a href="img/ss/edge_comments.png"><img src="img/ss/edge_comments.png" width="110%"></img></a>
+            <br><br>
+            </center>
+
+            <div align="right"><a href="docs.html#Top">[top]</a></div>
+            <br><br>
+
+            <a name="OptionsTab"></a>
+            <h3>Options Tab</h3>
+            <p>If you enable the Options Tab via the View menu, you can edit your config options on-the-fly:</p>
+
+            <br><br>
+            <center>
+            <a href="img/ss/options_pane.png"><img src="img/ss/options_pane.png" width="75%"></img></a>
+            </center>
+            <br><br>
+
+            <p>You can free-form edit this and if you hit the <b>Apply</b> button, it will be compiled and executed (user beware, you <b>can</b> really mess things up)</p>
+
+
+            <br><br>
+            <a name="getContext"></a>
+            <h3>getContext</h3>
+            <p>You can get a reference to many of the base objects Toolbag uses if you want to manually interact with the database, the UI, the FS, or history trees:</p>
+
+<pre>
+Python>ctx = toolbag.toolbag.getContext()
+Python>for k,v in ctx.iteritems(): print k,v
+reftree &lt;toolbag.RefTree.RefTree object at 0x0587FC90&gt;
+db &lt;toolbag.db.DB instance at 0x0588D580&gt;
+fs &lt;toolbag.fs.FS instance at 0x0588D3C8&gt;
+ui &lt;toolbag.ui.UI object at 0x0587FDF0&gt;
+</pre>
+            <br><br>
+            <p>Try invoking help() on any of those objects... or stop being lazy and read some code.</p>
+
+            <div align="right"><a href="docs.html#Top">[top]</a></div>
+            <br><br>
+
+            <a name="fu"></a>
+            <h3>The fu Module</h3>
+
+            <p>The fu module is similar to python's pickle module, but with more capability. With fu you are able to serialize a code object (including its current state) and ship it elsewhere. This can be immensely useful if you want to do things like ship a coworker a partially-executed function for them to continue.</p>
+
+
+            <div align="right"><a href="docs.html#Top">[top]</a></div>
+
+            </div>
+            <div class="sidenav">
+
+                <h2>Main</h2>
+                <ul>
+                    <li><a href="index.html">Index</a></li>
+                </ul>
+
+                <h2>Documentation</h2>
+                <ul>
+                    <li><a href="docs.html#Installation">Installation</a></li>
+                        <ul>
+                            <li><a href="docs.html#ThirdParty">Third Party Code</a></li>
+                        </ul>
+                    <li><a href="docs.html#Configuration">Configuration</a></li>
+                    <li><a href="docs.html#PlatformNotes">Platform Notes</a></li>
+                    <li><a href="docs.html#Instantiation">Instantiation</a></li>
+                    <li><a href="docs.html#Usage">Usage</a></li>
+                    <ul>
+                        <li><a href="docs.html#ToolbagUI">The Toolbag UI</a></li>
+                        <li><a href="docs.html#HistoryTab">The History Tab</a></li>
+                        <ul>
+                            <li><a href="docs.html#Merging">Merging</a></li>
+                        </ul>
+                        <li><a href="docs.html#Marks">Marks</a></li>
+                        <li><a href="docs.html#Comments">Comments</a></li>
+                        <li><a href="docs.html#Filesystem">File System</a></li>
+                        <li><a href="docs.html#Pathfinding">Pathfinding</a></li>
+                        <li><a href="docs.html#UserScripts">User Scripts</a></li>
+                            <ul>
+                                <li><a href="docs.html#HighlightCalls">highlight_calls.py</a></li>
+                                <li><a href="docs.html#CopyEA">CopyEA.py</a></li>
+                                <li><a href="docs.html#Vtable2Structs">vtable2structs.py</a></li>
+				<li><a href="docs.html#DynamicEdges">simple_dynamic_edges.py</a></li>
+                            </ul>
+                        <li><a href="docs.html#Queues">Queues</a></li>
+			<li><a href="docs.html#Analysis">Function Analysis</a></li>
+
+                    </ul>
+                    <li><a href="docs.html#Advanced">Advanced</a></li>
+                    <ul>
+                        <li><a href="docs.html#AddingEdges">Adding Edges</a></li>
+                        <li><a href="docs.html#OptionsTab">Options Tab</a></li>
+                        <li><a href="docs.html#getContext">getContext</a></li>
+                        <li><a href="docs.html#fu">The fu Module</a></li>
+                    </ul>
+
+                </ul>
+
+                <h2>About</h2>
+                <ul>
+                    <li><a href="contact.html">Contact</a></li>
+                </ul>
+
+            </div>
+
+            <div class="clearer"></div>
+
+        </div>
+        <br>
+        <br>
+        <div class="footer">
+        <center>
+            <img src="img/thunk.gif" width="200"></img>
+        </center>
+            <div class="clearer"><span></span></div>
+
+            
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+
+</html>

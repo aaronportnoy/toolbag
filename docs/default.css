@@ -1,0 +1,129 @@
+html {min-height: 100%;}
+
+* {
+	margin: 0;
+	padding: 0;
+}
+
+a {color: #800;}
+a:hover {color: #C00;}
+
+body {
+	background: #EDEDED url(img/bg.jpg) repeat-x;
+	color: #111;
+	font: normal 62.5% "Courier", sans-serif;
+}
+
+p,code,ul {padding-bottom: 1.2em;}
+
+h1 {
+
+	font: normal 1.8em Courier,sans-serif;
+	margin-bottom: 4px;
+}
+
+h2 {background: url(img/stripes.gif) repeat-x left bottom; color: #8f0404; font: normal 2em Impact,sans-serif; margin-bottom: 8px; padding-bottom: 11px; letter-spacing: 1px;}
+h3 { color: #8f0404; font: normal 1.5em Impact,sans-serif; margin-bottom: 8px; padding-left: 20px; padding-bottom: 11px; letter-spacing: 1px;}
+h4 { color: #8f0404; font: normal 1.4em Impact,sans-serif; margin-bottom: 8px; padding-left: 20px; padding-bottom: 11px; letter-spacing: 1px;}
+
+blockquote {
+	color: #111;
+	display: block;
+	font-style: italic;
+	font-weight: bold;
+	padding-left: 28px;
+}
+
+h1,h2,h3,h4 {padding-top: 6px;}
+
+/* misc */
+.clearer {
+	clear: both;
+	font-size: 0;
+}
+.left {float: left;}
+.right {float: right;}
+
+/* structure */
+.wrapper {
+	font-size: 1.3em;
+	margin: 0 auto;
+	width: 780px;
+}
+.container {background: url(img/header.gif) no-repeat center top;}
+
+/* title */
+.title {
+	font: normal 3em Tahoma,sans-serif;
+	/*text-decoration: line-through;*/
+}
+.red {color: #800;}
+
+/* sub navigation */
+.sidenav {
+	background: url(img/sidenav.gif) no-repeat right top;
+	padding-top: 291px;
+	float: right;
+	width: 177px;
+	/*position: fixed;
+	right: 100px;
+	right: 0px;*/
+}
+.sidenav h2 {
+	color: #8f0404;
+	font-size: 1.4em;
+	line-height: 30px;
+	margin: 0;
+}
+.sidenav ul {padding: 0.5em 0 0 0.5em;}
+.sidenav li {list-style: none;}
+.sidenav li a {
+	font-size: .9em;
+	line-height: 1.5em;
+	color: #111;
+	text-decoration: none;
+}
+.sidenav ul ul li {padding-left: 20px;}
+.sidenav ul ul ul li {padding-left: 35px;}
+.sidenav ul ul ul li {padding-bottom: 5px;}
+
+
+
+.sidenav li a:hover {color: #8f0404;}
+
+/* content */
+.content {
+	float: left;
+	margin: 10px 0;
+	padding-top: 32px;
+	width: 531px;
+}
+.content .descr {
+	color: #222;
+	font-weight: bold;
+	margin-bottom: 6px;
+}
+.content li {margin-left: 18px;}
+
+/* footer */
+.footer {
+	border-top: 1px dashed #333;
+	color: #777;
+	font: normal 0.9em sans-serif;
+	position: relative;
+	padding-top: 20px;
+}
+.footer a {
+	background: url(img/thunk.png) no-repeat center bottom;
+	color: #784;
+	text-decoration: none;
+	position: relative;
+	float: bottom;
+}
+.footer a:hover {
+	color: #AA3;
+	text-decoration: underline;
+}
+.footer .left, .footer .right {padding: 10px 0;}
+.footer .right, .footer .right a {color: #555;}
+.footer .right a:hover {color: #999;}
