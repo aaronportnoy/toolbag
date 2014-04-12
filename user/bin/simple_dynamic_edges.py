@@ -51,7 +51,7 @@ class DynamicCallDiag(QtGui.QDialog):
 
     def add_dyn_edges(self):
        
-        properties = filter(lambda x: len(x) > 0 and x or None, self.field1.textValue().strip(",").split(" "))
+        properties = filter(lambda x: len(x) > 0 and x or None, self.field1.textValue().strip(",").encode('UTF-8').split(" "))
 
         currentEA = provider.currentEA()
         startEA   = provider.funcStart(currentEA)
@@ -63,11 +63,12 @@ class DynamicCallDiag(QtGui.QDialog):
 
         res = {}
         for head in all_addresses:
-            disasm = filter(lambda x: len(x) > 0 and x or None, provider.getDisasm(head).strip(",").split(" "))
+            disasm = filter(lambda z: z != None and z, map(lambda y: len(y) > 0 and y.strip(",") or None, provider.getDisasm(head).split(" ")))
 
             success = True
             for i in xrange(0, len(properties)):
                 token = properties[i]
+
                 if len(token) > 0:
                     if token != disasm[i]:
                         success = False
