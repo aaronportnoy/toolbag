@@ -10,6 +10,8 @@ CONTRIBUTORS
     Zef Cekaj
     Peter Vreugdenhil
     Jasiel Spelman
+    Marc 'van Hauser' Heuse
+
 
 CONTACT
 --------
