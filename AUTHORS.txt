@@ -13,4 +13,4 @@ CONTRIBUTORS
 
 CONTACT
 --------
-    http://www.thunkers.net/~deft/code/toolbag/contact.html
+    aaron [ at ] exodusintel [ dot ] com
