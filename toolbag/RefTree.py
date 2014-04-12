@@ -14,12 +14,12 @@ from providers import ida
 
 class RefTree(object):    
 
-    def __init__(self, masterGraph, function_data=None):
+    def __init__(self, masterGraph, function_data={}):
 
         self.provider    = ida.IDA()
         self.masterGraph = masterGraph
 
-        if function_data == None:
+        if function_data == {}:
             self.function_data = {}
         else:
             self.function_data = function_data
@@ -108,14 +108,14 @@ class RefTree(object):
 
     
     def makeTree(self, addy, path = set([]), all_funcs = set([])):
-        childeren = []
+        children = []
         all_funcs.discard(addy)
         if(addy in self.function_data):
             for c in self.function_data[addy]['children']:
                 if(not c in path):
-                    childeren.append(self.makeTree(c, path | set([c]),
+                    children.append(self.makeTree(c, path | set([c]),
                all_funcs))
-        return (addy, childeren)
+        return (addy, children)
 
 
     def listChildren(self, tree):

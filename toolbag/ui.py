@@ -746,6 +746,9 @@ class UI(PluginForm):
         self.peerdata           = PeerDataQueue()
         self.last_history_added = None
 
+        print self.reftree
+
+
         # using this as a locking mechanism
         # so that if a user tries to use something from
         # a right-click context menu, none of the timers 
@@ -937,11 +940,15 @@ class UI(PluginForm):
 
                     menu = QtGui.QMenu()
 
-                    push_action  = menu.addAction("Push to peers")
-                    query_action = menu.addAction("Query DB")
-                    
+                    push_action     = menu.addAction("Push to peers")
+                    query_action    = menu.addAction("Query DB")
+                    remove_action   = menu.addAction("Remove Node")
+                    strings_action  = menu.addAction("Gather Strings")
+
                     obj.connect(query_action, QtCore.SIGNAL("triggered()"), self.ui.queryGraph)
                     obj.connect(push_action, QtCore.SIGNAL("triggered()"), self.ui.invokeQueues)
+                    obj.connect(remove_action, QtCore.SIGNAL("triggered()"), self.ui.removeNode)
+                    obj.connect(strings_action, QtCore.SIGNAL("triggered()"), self.ui.gatherStrings)
                     
                     menu.popup(obj.mapToGlobal(event.pos()))
                     self.ui.rightClickMenuActive = True
@@ -1864,8 +1871,8 @@ class UI(PluginForm):
         # load the default session if its available
         try:
             self.loadSessFile(default=True)
-        except:
-            print "[!] Failed to load default session"
+        except Exception as detail:
+            print "[!] Failed to load default session: %s" % detail
             self.clearHistory()
 
         # http://www.rainbowpuke.com/pics/newpukes/nickburns-rainbowpuke.gif
@@ -2288,13 +2295,13 @@ class UI(PluginForm):
             if self.options['dev_mode']:
                 print "DEBUG> add is false, treewidget.clear()'ing"
                 treewidget.clear()
-                print self.reftree
         
         for graph in self.reftree.makeTrees():
             self.createChildrenItems(graph, treewidget)        
 
         if self.options['dev_mode']:
             print 'addtohistory: about to call refreshstrings/marks/imports'
+
         self.refreshStrings()
         self.refreshMarks(local=True)
         self.refreshImports()
@@ -2651,13 +2658,14 @@ class UI(PluginForm):
             self.matchHistoryItem(widgetitem.child(childidx), param) 
 
 
-    def refreshHistory(self, local=False):
+    def refreshHistory(self):
 
         currentEA = self.provider.currentEA()
         func_top = self.provider.funcStart(currentEA)
         
-        if not func_top:
-            return
+        # XXX this seems like a stupid thing to do, self. removing.
+        #if not func_top:
+        #    return
 
         bgbrush = QtGui.QBrush(QtGui.QColor('darkgreen'))
         fgbrush = QtGui.QBrush(QtGui.QColor('white'))
@@ -2913,7 +2921,7 @@ class UI(PluginForm):
             
         treewidget = self.history_obj
         treewidget.clear()
-        self.reftree = None
+        self.reftree = RefTree.RefTree(self.master, function_data={})
         self.local_marks.clear()
 
 
@@ -3134,8 +3142,7 @@ class UI(PluginForm):
             print '[*] Loading session file %s' % selected
             treewidget = self.history_obj
             treewidget.clear()
-            self.reftree = copy.deepcopy(obj)
-
+            self.reftree = RefTree.RefTree(self.master, function_data=obj.function_data)
             self.addToHistory(add=False)
             self.refreshMarks(local=True)
             self.tabs.setCurrentWidget(self.historyTab)
@@ -3439,6 +3446,41 @@ class UI(PluginForm):
             #print '[!] refreshStrings, %s' % detail
 
 
+    def removeNode(self):
+        try:
+            selected = self.history_obj.selectedItems()[0].text(1)
+        except Exception as detail:
+            print "[!] You must select a node to perform a query!"
+            return
+
+        addy = int(selected, 16)
+        try:
+            # find addy in self.reftree and remove it
+            x = self.reftree.function_data
+            self.reftree.function_data = {key: value for key, value in x.items() if key != addy}
+
+            # find addy in the PySide QTreeWidget and remove it
+            if self.options['architecture'] == '32':
+                occs = self.history_obj.findItems("0x%08x" % addy, QtCore.Qt.MatchExactly, column=1)
+            elif self.options['architecture'] == '64':
+                occs = self.history_obj.findItems("0x%016x" % addy, QtCore.Qt.MatchExactly, column=1)
+            else:
+                print "[!] Unknown architecture %s!" % self.options['architecture']
+                return
+
+            print "[*] Found %d occurrences of requested node" % len(occs)
+
+            for occ in occs:
+                idx = self.history_obj.indexOfTopLevelItem(occ)
+                self.history_obj.takeTopLevelItem(idx)
+
+            print "[*] Done removing nodes, refreshing history view"
+            self.refreshHistory()
+
+        except Exception as detail:
+            print "[!] Error trying to remove node from history: %s" % detail
+
+
     def queryGraph(self):
         if self.options['dev_mode']:
             print "[D] queryGraph: printing stack:"
@@ -3499,6 +3541,62 @@ class UI(PluginForm):
         #    pass
 
         self.rightClickMenuActive = False
+
+
+    def gatherStrings(self):
+        funcs_uniq = list(set(self.reftree.function_data.keys()))
+
+        # gather all addresses
+        all_addresses = []
+        for f in funcs_uniq:
+            startEA = self.provider.funcStart(f)
+            endEA = self.provider.funcEnd(f)
+
+            if startEA == None or endEA == None:
+                continue
+
+            # loop the obvious instructions *and* function chunks
+            all_addresses.extend(self.provider.iterInstructions(startEA, endEA))
+            all_addresses.extend(self.provider.iterFuncChunks(startEA))
+            all_addresses = list(set(all_addresses))
+
+
+        print "[*] Gathering strings across %d functions (%d instructions)" % (len(funcs_uniq), len(all_addresses))
+
+        found = {}
+        for instr in all_addresses:
+            try:
+                ref = database.down(instr)
+                if ref == []:
+                    continue
+                else:
+                    for r in ref:
+                        # check flags
+                        res = self.provider.isString(r)
+                        if res:
+                            value = self.provider.getString(r)
+                            value = value.replace("\n", "\\n ")
+
+                            if found.has_key(instr):
+                                continue
+                            else:
+                                found[instr] = value
+
+                            
+            except Exception as detail:
+                print '[!] Failed gathering strings: %s' % detail
+
+        print "[*] Gathered %d strings from current history, result:" % len(found.keys())
+
+        for address, stringvalue in found.iteritems():
+            if self.options['architecture'] == "32":
+                print "[*] 0x%08x: %s" % (address, stringvalue)
+            elif self.options['architecture'] == "64":
+                print "[*] 0x%016x: %s" % (address, stringvalue)
+            else:
+                print "[!] Unknown architecture!"
+
+        
 
 
     def invokeQueues(self):
