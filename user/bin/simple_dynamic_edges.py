@@ -74,18 +74,32 @@ class DynamicCallDiag(QtGui.QDialog):
                         success = False
                         break
 
+
             if success:
             	sub_xref = None
-            	xrefs = XrefsFrom(head)
+            	xrefs = list(XrefsFrom(head))
             	for x in xrefs:
             		if x.type == 1:
             			sub_xref = x.to
             			break
-
-                res[head] = sub_xref
+                if len(xrefs) > 0 and sub_xref != None:
+                    res[head] = sub_xref
 
         for address, dest in res.iteritems():
-            print "Found: 0x%08x %s with a cross-reference to 0x%08x" % (address, provider.getDisasm(address), dest)
+            try:
+                provider.makeFunc(dest)
+            except Exception as detail:
+                if self.ui_obj.options['architecture'] == '32':
+                    print "[!] Unable to MakeFunction at 0x%08x" % dest
+                elif self.ui_obj.options['architecture'] == '64':
+                    print "[!] Unable to MakeFunction at 0x%016x" % dest
+                break
+
+            if self.ui_obj.options['architecture'] == '32':
+                print "[*] Found: 0x%08x %s with a cross-reference to 0x%08x" % (address, provider.getDisasm(address), dest)
+            elif self.ui_obj.options['architecture'] == '64':
+                print "[*] Found: 0x%08x %s with a cross-reference to 0x%016x" % (address, provider.getDisasm(address), dest)
+
             self.ui_obj.addEdgeSource(userEA=currentEA)
             self.ui_obj.addEdgeDest(userEA=dest)
         

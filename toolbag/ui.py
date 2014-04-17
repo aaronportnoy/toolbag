@@ -4032,15 +4032,16 @@ class UI(PluginForm):
 
         # delete any Query objects we created
         # prevents IDA from crashing due to a dangling reference
+        '''
         for c in self.new_windows:
             try:
                 del(c)
             except:
                 pass
-        
+        '''
         # remove the UI hooks
         self.ui_hook.unhook()
-        del self.ui_hook
+        #del self.ui_hook
 
         print "[*] Toolbag has been shut down"
 
