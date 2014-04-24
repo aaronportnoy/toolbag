@@ -30,6 +30,10 @@ options = {
                 # default tabs enabled
                 'enabled_tabs'           : ["File System", "Pathfinding", "Scripts"],
 
+                # local comments or marks
+                # valid values: 'marks' or 'comments'
+                'localview'              : 'comments',
+
                 # show splash boolean
                 'show_splash'            : True,
 

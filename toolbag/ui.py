@@ -830,6 +830,9 @@ class UI(PluginForm):
         # refresh the FS tab
         self.refreshFilesystem()
 
+        # refresh comments
+        self.refreshCmts()
+
     # MakeFunction
     def tbMakeFunction(self):
         if self.options['dev_mode']:
@@ -863,6 +866,9 @@ class UI(PluginForm):
 
         # refresh the FS tab
         self.refreshFilesystem()
+
+        # refresh comments
+        self.refreshCmts()
 
 
     # MakeName hook
@@ -963,6 +969,26 @@ class UI(PluginForm):
         history_obj.installEventFilter(eventFilter)
 
 
+    def initLocalCmts(self):
+        if self.options['dev_mode']:
+            print "[D] initLocalCmts: printing stack:"
+            traceback.print_stack()
+
+        local_cmts      = QtGui.QTreeWidget()
+        self.local_cmts = local_cmts
+        local_cmts.setHeaderLabels(("Description", "Location", "Address"))
+        local_cmts.setColumnCount(3)
+        local_cmts.setColumnWidth(0, 120)
+        local_cmts.setColumnWidth(1, 100)
+        local_cmts.setColumnWidth(2, 50)
+        local_cmts.setSortingEnabled(True)
+        local_cmts.itemClicked.connect(self.localCmtClicked)
+
+
+        local_cmts_label      = QtGui.QLabel()
+        self.local_cmts_label = local_cmts_label
+        local_cmts_label.setText("Local comments:")
+
     def initLocalMarks(self):
         if self.options['dev_mode']:
             print "[D] initLocalMarks: printing stack:"
@@ -1006,7 +1032,7 @@ class UI(PluginForm):
 
 
         local_marks_label      = QtGui.QLabel()
-        self.local_marks_label = local_marks
+        self.local_marks_label = local_marks_label
         local_marks_label.setText("Local marks:")
 
 
@@ -1545,8 +1571,12 @@ class UI(PluginForm):
         # Create history tree
         self.initHistoryTree()
 
+        #if self.options['localview'] == 'marks':
         # Create local marks
         self.initLocalMarks()
+        #else:
+        # Create local comments
+        self.initLocalCmts()
 
         # Create show imports view
         self.initShowImports()
@@ -1621,25 +1651,29 @@ class UI(PluginForm):
         #stupid2_container.setSizeConstraint(QtGui.QLayout.SetFixedSize)
         stupid2_container.setSpacing(0)
         stupid2.setLayout(stupid2_container)
-        local_marks_toolbar = QtGui.QToolBar()
-        
-        delete_local_mark_icon = QtGui.QIcon(rsrc_dir + os.sep + "clear.png")
-        
-        self.delete_local_mark_button = QtGui.QToolButton()
-        self.delete_local_mark_button.setIcon(delete_local_mark_icon)
-        
-        local_marks_toolbar.addWidget(self.delete_local_mark_button)
 
-        local_marks_toolbar.setIconSize(QtCore.QSize(18, 18))
-
-        stupid2_container.addWidget(local_marks_toolbar)
+        if self.options['localview'] == 'marks':
+            local_marks_toolbar = QtGui.QToolBar()
         
-        local_mark_buttons = [ \
-            ("delete_local_mark_button", "Delete the currently selected mark", self.deleteLocalMark)
-        ]
-        for b in local_mark_buttons:
-            self.initToolbarButtons(b[0], b[1], b[2])
+            delete_local_mark_icon = QtGui.QIcon(rsrc_dir + os.sep + "clear.png")
+        
+            self.delete_local_mark_button = QtGui.QToolButton()
+            self.delete_local_mark_button.setIcon(delete_local_mark_icon)
+        
+            local_marks_toolbar.addWidget(self.delete_local_mark_button)
 
+            local_marks_toolbar.setIconSize(QtCore.QSize(18, 18))
+
+            stupid2_container.addWidget(local_marks_toolbar)
+        
+            local_mark_buttons = [ \
+                ("delete_local_mark_button", "Delete the currently selected mark", self.deleteLocalMark)
+            ]
+            for b in local_mark_buttons:
+                self.initToolbarButtons(b[0], b[1], b[2])
+        else:
+            # no toolbar
+            pass
 
         split_thing = QtGui.QWidget()
         split_thing_container = QtGui.QVBoxLayout()
@@ -1649,8 +1683,15 @@ class UI(PluginForm):
         splitter.setOrientation(QtCore.Qt.Vertical)
         splitter.addWidget(self.history_obj)
         splitter.addWidget(stupid2)
-        splitter.addWidget(self.local_marks_label)
-        splitter.addWidget(self.local_marks)
+
+        if self.options['localview'] == 'marks':
+            self.localview = self.local_marks
+            splitter.addWidget(self.local_marks_label)
+            splitter.addWidget(self.local_marks)
+        else:
+            self.localview = self.local_cmts
+            splitter.addWidget(self.local_cmts_label)
+            splitter.addWidget(self.local_cmts)
 
         split_thing_container.addWidget(splitter)
 
@@ -1879,7 +1920,7 @@ class UI(PluginForm):
         bgbrush = QtGui.QBrush(QtGui.QColor(self.options['background_color']))
         palette = QtGui.QPalette()
 
-        for w in [self.history_obj, self.fsTree, self.markList, self.local_marks, self.import_calls, self.string_refs]:
+        for w in [self.history_obj, self.fsTree, self.markList, self.localview, self.import_calls, self.string_refs]:
             v = w.viewport()
             palette.setBrush(v.backgroundRole(), bgbrush)
             v.setPalette(palette)
@@ -2304,6 +2345,7 @@ class UI(PluginForm):
 
         self.refreshStrings()
         self.refreshMarks(local=True)
+        self.refreshCmts()
         self.refreshImports()
 
 
@@ -2658,7 +2700,7 @@ class UI(PluginForm):
             self.matchHistoryItem(widgetitem.child(childidx), param) 
 
 
-    def refreshHistory(self):
+    def refreshHistory(self, local=False):
 
         currentEA = self.provider.currentEA()
         func_top = self.provider.funcStart(currentEA)
@@ -2690,6 +2732,71 @@ class UI(PluginForm):
                 toplevelitem.setBackground(0, QtGui.QBrush(QtGui.QColor(self.options['background_color'])))
                 toplevelitem.setBackground(1, QtGui.QBrush(QtGui.QColor(self.options['background_color'])))
                 self.matchHistoryItem(toplevelitem, func_top)
+
+    def refreshCmts(self):
+        if self.options['dev_mode']:
+            print "[D] refreshCmts: printing stack:"
+            traceback.print_stack()
+
+        self.localview.clear()
+        comment_dict  = pickle.loads(self.fs.load("default.cmts"))
+        rcomment_dict = pickle.loads(self.fs.load("default.rcmts"))
+
+        current_ea = self.provider.currentEA()
+        dicts = [comment_dict, rcomment_dict]
+        for d in dicts:
+            for addy, comm in d.iteritems():
+
+                is_import = False
+                try:
+                    function.top(addy)
+                except ValueError:
+                    is_import = True
+
+                try:
+                    if not function.contains(current_ea, addy):
+                        continue
+                except ValueError as detail:
+                    # likely import
+                    is_import = True
+                    if current_ea != addy:
+                        continue
+            
+                cmt_item = QtGui.QTreeWidgetItem(self.localview)
+
+                if is_import:
+                    func_top = addy
+                else:
+                    func_top = function.top(addy)
+
+                offset = addy - func_top
+                func_name  = self.provider.getName(func_top)
+                func_name2 = self.provider.demangleName(func_name)
+                
+                # in case Demangle returns None
+                if func_name2: 
+                    func_name = func_name2
+
+                if len(func_name) == 0:
+                    symbol = hex(addy)
+                else:
+                    symbol = func_name + "+" + "0x%x" % offset
+
+                font = QtGui.QFont(self.options['font_name'], int(self.options['font_size']))
+                cmt_item.setFont(0, font)
+                cmt_item.setFont(1, font)
+                cmt_item.setFont(2, font)
+
+                cmt_item.setText(0, comm)
+                cmt_item.setText(1, "%s" % symbol)
+            
+
+                if self.options['architecture'] == "32":
+                    cmt_item.setText(2, "0x%08x" % addy)
+                else:
+                    cmt_item.setText(2, "0x%016x" % addy)
+
+                cmt_item.setExpanded(True)
 
 
     def refreshMarks(self, local=False):
@@ -2841,6 +2948,14 @@ class UI(PluginForm):
         address = int(address_line, 16)
         database.go(address)
 
+    def localCmtClicked(self, item, column):
+        if self.options['dev_mode']:
+            print "[D] localCmtClicked: printing stack:"
+            traceback.print_stack()
+            
+        address_line = item.data(3, 0)
+        address = int(address_line, 16)
+        database.go(address)
 
     def localMarkClicked(self, item, column):
         if self.options['dev_mode']:
@@ -2922,7 +3037,7 @@ class UI(PluginForm):
         treewidget = self.history_obj
         treewidget.clear()
         self.reftree = RefTree.RefTree(self.master, function_data={})
-        self.local_marks.clear()
+        self.localview.clear()
 
 
     def deleteFile(self):
