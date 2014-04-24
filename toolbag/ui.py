@@ -1927,7 +1927,6 @@ class UI(PluginForm):
 
         layout.addWidget(mainMenu)
 
-
         layout.addWidget(tabs)
 
         self.parent.setLayout(layout)
@@ -2953,7 +2952,7 @@ class UI(PluginForm):
             print "[D] localCmtClicked: printing stack:"
             traceback.print_stack()
             
-        address_line = item.data(3, 0)
+        address_line = item.data(2, 0)
         address = int(address_line, 16)
         database.go(address)
 
@@ -2977,6 +2976,7 @@ class UI(PluginForm):
             addr = int(col2_data, 16)
             database.go(addr)
             self.refreshMarks(local=True)
+            self.refreshCmts()
 
             if self.show_imports == True:
                 self.refreshImports()
@@ -2987,6 +2987,7 @@ class UI(PluginForm):
             print '[!] Failed to jump to address clicked in history tree, %s' % detail
             pass
 
+        
 
     def saveHistory(self, default=False, userRefTree=None):
         if self.options['dev_mode']:
@@ -3260,6 +3261,7 @@ class UI(PluginForm):
             self.reftree = RefTree.RefTree(self.master, function_data=obj.function_data)
             self.addToHistory(add=False)
             self.refreshMarks(local=True)
+            self.refreshCmts()
             self.tabs.setCurrentWidget(self.historyTab)
 
 
