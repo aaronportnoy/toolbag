@@ -218,3 +218,6 @@ class IDA(base.Driver):
 
     def jumpto(self, addr):
         return idaapi.jumpto(addr)
+
+    def sync(self, f):
+        return idaapi.execute_sync(f, idaapi.MFF_FAST)
