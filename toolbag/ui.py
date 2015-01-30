@@ -11,18 +11,15 @@ import re
 import sys
 import time
 import copy
-import types
-import thread
 import pickle
 import atexit
 import socket
 import signal
 import getpass
 import tempfile
-import threading
 import traceback
 import subprocess
-
+import types
 
 # PySide
 from PySide import QtCore, QtGui
@@ -39,14 +36,10 @@ import analysis
 #import toolbagcomm
 #import ToolbagTask
 
-
 # IDA provider
 from providers import ida
 from providers.ida import form as PluginForm
 
-
-# globals
-currentEA = 0
 
 class PeerDataQueue:
     def __init__(self):
@@ -496,7 +489,6 @@ class Query(PluginForm):
             self.addrs.extend(results)
 
         self.provider = ida.IDA()
-        currentEA = self.provider.currentEA()
 
         super(Query, self).__init__()
 
@@ -754,6 +746,9 @@ class UI(PluginForm):
         self.peerdata           = PeerDataQueue()
         self.last_history_added = None
 
+        print self.reftree
+
+
         # using this as a locking mechanism
         # so that if a user tries to use something from
         # a right-click context menu, none of the timers 
@@ -761,7 +756,7 @@ class UI(PluginForm):
         # they won't deselect the item the user selected
         self.rightClickMenuActive = False
 
-        self.provider   = ida.IDA()
+        self.provider = ida.IDA()
 
         super(UI, self).__init__()
 
@@ -818,7 +813,7 @@ class UI(PluginForm):
             traceback.print_stack()
 
         # grab the current EA
-        ea = currentEA
+        ea = self.provider.currentEA()
 
         # retrieve our dictionary
         comment_dict = pickle.loads(self.fs.load("default.cmts"))
@@ -1978,6 +1973,7 @@ class UI(PluginForm):
         self.ui_hook.register_handler("MakeFunction", self.tbMakeFunction)
 
 
+
     def importToggle(self):
         if self.options['dev_mode']:
             print "[D] importToggle: printing stack:"
@@ -2275,16 +2271,10 @@ class UI(PluginForm):
             print "[D] addToHistory: printing stack:"
             traceback.print_stack()
             
-        lock = threading.RLock()
-        lock.acquire()
-        global currentEA
-        curEA = currentEA
-        lock.release()
-
         treewidget = self.history_obj
 
         if userEA == False:
-            ea = curEA
+            ea = self.provider.currentEA()
         else:
             ea = userEA
 
@@ -2405,14 +2395,7 @@ class UI(PluginForm):
 
 
             def add_mark(self):
-
-                lock = threading.RLock()
-                lock.acquire()
-                global currentEA
-                curEA = currentEA
-                lock.release()
-
-                ea = curEA
+                ea = self.ui_obj.provider.currentEA()
                 if self.ui_obj.options['architecture'] == "32":
                     print "[*] Adding a mark at 0x%08x" % ea
                 else:
@@ -2456,14 +2439,8 @@ class UI(PluginForm):
         if self.options['dev_mode']:
             print "[D] PathStart: printing stack:"
             traceback.print_stack()
-        
-        lock = threading.RLock()
-        lock.acquire()
-        global currentEA
-        curEA = currentEA
-        lock.release()
-
-        ea         = curEA
+            
+        ea         = self.provider.currentEA()
         func_name2 = None
         try:
             func_top  = function.top(ea)
@@ -2486,9 +2463,9 @@ class UI(PluginForm):
             func_name = func_name2
 
         if self.options['architecture'] == "32":
-            self.pathStart.setText("Start address: 0x%08x, %s+0x%x" % (curEA, func_name, offset))
+            self.pathStart.setText("Start address: 0x%08x, %s+0x%x" % (self.provider.currentEA(), func_name, offset))
         else:
-            self.pathStart.setText("Start address: 0x%016x, %s+0x%x" % (curEA, func_name, offset))
+            self.pathStart.setText("Start address: 0x%016x, %s+0x%x" % (self.provider.currentEA(), func_name, offset))
 
         self.pathStartAddress = func_top
         self.tabs.setCurrentWidget(self.pathfindingTab)
@@ -2499,13 +2476,7 @@ class UI(PluginForm):
             print "[D] PathEnd: printing stack:"
             traceback.print_stack()
             
-        lock = threading.RLock()
-        lock.acquire()
-        global currentEA
-        curEA = currentEA
-        lock.release()
-
-        ea         = curEA
+        ea         = self.provider.currentEA()
         func_name2 = None
         try:
             func_top  = function.top(ea)
@@ -2528,9 +2499,9 @@ class UI(PluginForm):
             func_name = func_name2
 
         if self.options['architecture'] == "32":
-            self.pathEnd.setText("End address: 0x%08x, %s+0x%x" % (curEA, func_name, offset))
+            self.pathEnd.setText("End address: 0x%08x, %s+0x%x" % (self.provider.currentEA(), func_name, offset))
         else:
-            self.pathEnd.setText("End address: 0x%016x, %s+0x%x" % (curEA(), func_name, offset))
+            self.pathEnd.setText("End address: 0x%016x, %s+0x%x" % (self.provider.currentEA(), func_name, offset))
 
         self.pathEndAddress = ea
         self.tabs.setCurrentWidget(self.pathfindingTab)
@@ -2729,13 +2700,9 @@ class UI(PluginForm):
 
 
     def refreshHistory(self, local=False):
-        lock = threading.RLock()
-        lock.acquire()
-        global currentEA
-        curEA = currentEA
-        lock.release()
 
-        func_top = self.provider.funcStart(curEA)
+        currentEA = self.provider.currentEA()
+        func_top = self.provider.funcStart(currentEA)
         
         # XXX this seems like a stupid thing to do, self. removing.
         #if not func_top:
@@ -2746,251 +2713,228 @@ class UI(PluginForm):
 
         toplevelcount = self.history_obj.topLevelItemCount()
 
-        def doit():
-   
-            for i in xrange(0, toplevelcount):
-                toplevelitem = self.history_obj.topLevelItem(i)
+        for i in xrange(0, toplevelcount):
+            toplevelitem = self.history_obj.topLevelItem(i)
 
-                text = toplevelitem.text(1)
-                address = int(str(text), 16)
+            text = toplevelitem.text(1)
+            address = int(str(text), 16)
 
-                if address == func_top:
-                    toplevelitem.setForeground(0, fgbrush)
-                    toplevelitem.setForeground(1, fgbrush)
-                    toplevelitem.setBackground(0, bgbrush)
-                    toplevelitem.setBackground(1, bgbrush)
-                    self.matchHistoryItem(toplevelitem, func_top)
-                else:
-                    toplevelitem.setForeground(0, QtGui.QBrush(QtGui.QColor(self.options['font_color'])))
-                    toplevelitem.setForeground(1, QtGui.QBrush(QtGui.QColor(self.options['font_color'])))
-                    toplevelitem.setBackground(0, QtGui.QBrush(QtGui.QColor(self.options['background_color'])))
-                    toplevelitem.setBackground(1, QtGui.QBrush(QtGui.QColor(self.options['background_color'])))
-                    self.matchHistoryItem(toplevelitem, func_top)
-
-        self.provider.sync(doit)
+            if address == func_top:
+                toplevelitem.setForeground(0, fgbrush)
+                toplevelitem.setForeground(1, fgbrush)
+                toplevelitem.setBackground(0, bgbrush)
+                toplevelitem.setBackground(1, bgbrush)
+                self.matchHistoryItem(toplevelitem, func_top)
+            else:
+                toplevelitem.setForeground(0, QtGui.QBrush(QtGui.QColor(self.options['font_color'])))
+                toplevelitem.setForeground(1, QtGui.QBrush(QtGui.QColor(self.options['font_color'])))
+                toplevelitem.setBackground(0, QtGui.QBrush(QtGui.QColor(self.options['background_color'])))
+                toplevelitem.setBackground(1, QtGui.QBrush(QtGui.QColor(self.options['background_color'])))
+                self.matchHistoryItem(toplevelitem, func_top)
 
     def refreshCmts(self):
-        lock = threading.RLock()
-        lock.acquire()
-        global currentEA
-        current_ea = currentEA
-        lock.release()
-
         if self.options['dev_mode']:
             print "[D] refreshCmts: printing stack:"
             traceback.print_stack()
 
-        def doit():
-            self.localview.clear()
-            comment_dict  = pickle.loads(self.fs.load("default.cmts"))
-            rcomment_dict = pickle.loads(self.fs.load("default.rcmts"))
+        self.localview.clear()
+        comment_dict  = pickle.loads(self.fs.load("default.cmts"))
+        rcomment_dict = pickle.loads(self.fs.load("default.rcmts"))
 
-            dicts = [comment_dict, rcomment_dict]
-            for d in dicts:
-                for addy, comm in d.iteritems():
+        current_ea = self.provider.currentEA()
+        dicts = [comment_dict, rcomment_dict]
+        for d in dicts:
+            for addy, comm in d.iteritems():
 
-                    is_import = False
-                    try:
-                        function.top(addy)
-                    except ValueError:
-                        is_import = True
+                is_import = False
+                try:
+                    function.top(addy)
+                except ValueError:
+                    is_import = True
 
-                    try:
-                        if not function.contains(current_ea, addy):
-                            continue
-                    except ValueError as detail:
-                        # likely import
-                        is_import = True
-                        if current_ea != addy:
-                            continue
+                try:
+                    if not function.contains(current_ea, addy):
+                        continue
+                except ValueError as detail:
+                    # likely import
+                    is_import = True
+                    if current_ea != addy:
+                        continue
+            
+                cmt_item = QtGui.QTreeWidgetItem(self.localview)
+
+                if is_import:
+                    func_top = addy
+                else:
+                    func_top = function.top(addy)
+
+                offset = addy - func_top
+                func_name  = self.provider.getName(func_top)
+                func_name2 = self.provider.demangleName(func_name)
                 
-                    cmt_item = QtGui.QTreeWidgetItem(self.localview)
+                # in case Demangle returns None
+                if func_name2: 
+                    func_name = func_name2
 
-                    if is_import:
-                        func_top = addy
-                    else:
-                        func_top = function.top(addy)
+                if len(func_name) == 0:
+                    symbol = hex(addy)
+                else:
+                    symbol = func_name + "+" + "0x%x" % offset
 
-                    offset = addy - func_top
-                    func_name  = self.provider.getName(func_top)
-                    func_name2 = self.provider.demangleName(func_name)
-                    
-                    # in case Demangle returns None
-                    if func_name2: 
-                        func_name = func_name2
+                font = QtGui.QFont(self.options['font_name'], int(self.options['font_size']))
+                cmt_item.setFont(0, font)
+                cmt_item.setFont(1, font)
+                cmt_item.setFont(2, font)
 
-                    if len(func_name) == 0:
-                        symbol = hex(addy)
-                    else:
-                        symbol = func_name + "+" + "0x%x" % offset
+                cmt_item.setText(0, comm)
+                cmt_item.setText(1, "%s" % symbol)
+            
 
-                    font = QtGui.QFont(self.options['font_name'], int(self.options['font_size']))
-                    cmt_item.setFont(0, font)
-                    cmt_item.setFont(1, font)
-                    cmt_item.setFont(2, font)
+                if self.options['architecture'] == "32":
+                    cmt_item.setText(2, "0x%08x" % addy)
+                else:
+                    cmt_item.setText(2, "0x%016x" % addy)
 
-                    cmt_item.setText(0, comm)
-                    cmt_item.setText(1, "%s" % symbol)
-                
+                cmt_item.setExpanded(True)
 
-                    if self.options['architecture'] == "32":
-                        cmt_item.setText(2, "0x%08x" % addy)
-                    else:
-                        cmt_item.setText(2, "0x%016x" % addy)
-
-                    cmt_item.setExpanded(True)
-
-        self.provider.sync(doit)
 
     def refreshMarks(self, local=False):
         if self.options['dev_mode']:
             print "[D] refreshMarks: printing stack:"
             traceback.print_stack()
-        
-        lock = threading.RLock()
-        lock.acquire()
-        global currentEA
-        curEA = currentEA
-        lock.release()
-
-        if self.options['localview'] != 'marks':
+            
+        # ensure we aren't accidentally de-selecting something via a refresh while a context menu is active
+        if self.rightClickMenuActive:
             return
 
-        def doit():
+        if local:
+            mark_obj = self.local_marks
+        else:
+            mark_obj = self.markList
 
-            # ensure we aren't accidentally de-selecting something via a refresh while a context menu is active
-            if self.rightClickMenuActive:
-                return
+        selected_address = None
+        selected = mark_obj.selectedItems()
+        if selected != []:
+            selected_address = selected[0].text(3)
+
+        marks = self.master.getAttribute('mark')
+        groups = self.master.getAttribute('group')
+
+        mark_obj.clear()
+        for mark_ea, data in marks.iteritems():
+
+            is_import = False
+            # skip marks not in code
+            try:
+                function.top(mark_ea)
+            except ValueError:
+                is_import = True
 
             if local:
-                mark_obj = self.local_marks
-            else:
-                mark_obj = self.markList
-
-            selected_address = None
-            selected = mark_obj.selectedItems()
-            if selected != []:
-                selected_address = selected[0].text(3)
-
-            marks = self.master.getAttribute('mark')
-            groups = self.master.getAttribute('group')
-
-            mark_obj.clear()
-            for mark_ea, data in marks.iteritems():
-
-                is_import = False
-                # skip marks not in code
+                current_ea = self.provider.currentEA()
                 try:
-                    function.top(mark_ea)
-                except ValueError:
+                    if not function.contains(current_ea, mark_ea):
+                        continue
+                except ValueError as detail:
+                    # likely import
                     is_import = True
-
-                if local:
-                    current_ea = curEA
-                    try:
-                        if not function.contains(current_ea, mark_ea):
-                            continue
-                    except ValueError as detail:
-                        # likely import
-                        is_import = True
-                        if current_ea != mark_ea:
-                            continue
+                    if current_ea != mark_ea:
+                        continue
 
 
-                # check if its part of a group
-                if groups.has_key(mark_ea):
+            # check if its part of a group
+            if groups.has_key(mark_ea):
 
-                    # XXX: we need to ensure we don't have it already in the list
-                    mark_item = QtGui.QTreeWidgetItem(mark_obj)
-                    mark_description = data['mark']           
+                # XXX: we need to ensure we don't have it already in the list
+                mark_item = QtGui.QTreeWidgetItem(mark_obj)
+                mark_description = data['mark']           
 
-                    if is_import:
-                        func_top = mark_ea
-                    else:
-                        func_top = function.top(mark_ea)
-
-                    offset = mark_ea - func_top
-                    func_name = self.provider.getName(func_top)
-
-                    func_name2 = self.provider.demangleName(func_name)
-                    
-                    # in case Demangle returns None
-                    if func_name2: 
-                        func_name = func_name2
-
-                    if len(func_name) == 0:
-                        symbol = hex(mark_ea)
-                    else:
-                        symbol = func_name + "+" + "0x%x" % offset
-
-                    group_text = groups[mark_ea]['group']
-
-                    font = QtGui.QFont(self.options['font_name'], int(self.options['font_size']))
-                    mark_item.setFont(0, font)
-                    mark_item.setFont(1, font)
-                    mark_item.setFont(2, font)
-                    mark_item.setFont(3, font)
-
-                    mark_item.setText(0, mark_description)
-                    mark_item.setText(1, "%s" % symbol)
-                    mark_item.setText(2, group_text)
-
-                    if self.options['architecture'] == "32":
-                        mark_item.setText(3, "0x%08x" % mark_ea)
-                    else:
-                        mark_item.setText(3, "0x%016x" % mark_ea)
-
-                    mark_item.setExpanded(True)
-                    del(font)
-      
+                if is_import:
+                    func_top = mark_ea
                 else:
-                    mark_item = QtGui.QTreeWidgetItem(mark_obj)
-                    mark_description = data['mark']           
+                    func_top = function.top(mark_ea)
 
-                    if is_import:
-                        func_top = mark_ea
-                    else:
-                        func_top = function.top(mark_ea)
-                    
-                    offset = mark_ea - func_top
-                    func_name = self.provider.getName(func_top)
-                    func_name2 = self.provider.demangleName(func_name)
-                    
-                    # in case Demangle returns None
-                    if func_name2: 
-                        func_name = func_name2
-                    
-                    if len(func_name) == 0:
-                        symbol = hex(mark_ea)
-                    else:
-                        symbol = func_name + "+" + "0x%x" % offset
+                offset = mark_ea - func_top
+                func_name = self.provider.getName(func_top)
 
-                    group_text = ''
+                func_name2 = self.provider.demangleName(func_name)
+                
+                # in case Demangle returns None
+                if func_name2: 
+                    func_name = func_name2
 
-                    font = QtGui.QFont(self.options['font_name'], int(self.options['font_size']))
-                    mark_item.setFont(0, font)
-                    mark_item.setFont(1, font)
-                    mark_item.setFont(2, font)
-                    mark_item.setFont(3, font)
+                if len(func_name) == 0:
+                    symbol = hex(mark_ea)
+                else:
+                    symbol = func_name + "+" + "0x%x" % offset
 
-                    mark_item.setText(0, mark_description)
-                    mark_item.setText(1, "%s" % symbol)
-                    mark_item.setText(2, group_text)
+                group_text = groups[mark_ea]['group']
 
-                    if self.options['architecture'] == "32":
-                        mark_item.setText(3, "0x%08x" % mark_ea)
-                    else:
-                        mark_item.setText(3, "0x%016x" % mark_ea)
+                font = QtGui.QFont(self.options['font_name'], int(self.options['font_size']))
+                mark_item.setFont(0, font)
+                mark_item.setFont(1, font)
+                mark_item.setFont(2, font)
+                mark_item.setFont(3, font)
 
-                    mark_item.setExpanded(True)
-                    del(font)
+                mark_item.setText(0, mark_description)
+                mark_item.setText(1, "%s" % symbol)
+                mark_item.setText(2, group_text)
 
-                # reset anything that was selected prior to the timer de-selecting it
-                x = mark_obj.findItems(selected_address, QtCore.Qt.MatchExactly, column=3)
-                if x != []:
-                    x[0].setSelected(True)
+                if self.options['architecture'] == "32":
+                    mark_item.setText(3, "0x%08x" % mark_ea)
+                else:
+                    mark_item.setText(3, "0x%016x" % mark_ea)
 
-        self.provider.sync(doit)
+                mark_item.setExpanded(True)
+                del(font)
+  
+            else:
+                mark_item = QtGui.QTreeWidgetItem(mark_obj)
+                mark_description = data['mark']           
+
+                if is_import:
+                    func_top = mark_ea
+                else:
+                    func_top = function.top(mark_ea)
+                
+                offset = mark_ea - func_top
+                func_name = self.provider.getName(func_top)
+                func_name2 = self.provider.demangleName(func_name)
+                
+                # in case Demangle returns None
+                if func_name2: 
+                    func_name = func_name2
+                
+                if len(func_name) == 0:
+                    symbol = hex(mark_ea)
+                else:
+                    symbol = func_name + "+" + "0x%x" % offset
+
+                group_text = ''
+
+                font = QtGui.QFont(self.options['font_name'], int(self.options['font_size']))
+                mark_item.setFont(0, font)
+                mark_item.setFont(1, font)
+                mark_item.setFont(2, font)
+                mark_item.setFont(3, font)
+
+                mark_item.setText(0, mark_description)
+                mark_item.setText(1, "%s" % symbol)
+                mark_item.setText(2, group_text)
+
+                if self.options['architecture'] == "32":
+                    mark_item.setText(3, "0x%08x" % mark_ea)
+                else:
+                    mark_item.setText(3, "0x%016x" % mark_ea)
+
+                mark_item.setExpanded(True)
+                del(font)
+
+            # reset anything that was selected prior to the timer de-selecting it
+            x = mark_obj.findItems(selected_address, QtCore.Qt.MatchExactly, column=3)
+            if x != []:
+                x[0].setSelected(True)
+
 
     
     def markClicked(self, item, column):
@@ -3424,220 +3368,199 @@ class UI(PluginForm):
             print "[D] refreshImports: printing stack:"
             traceback.print_stack()
             
-        lock = threading.RLock()
-        lock.acquire()
-        global currentEA
-        curEA = currentEA
-        lock.release()
+        self.import_calls.clear()
 
-        def doit():
+        if self.show_imports == True:
+            self.import_calls.setVisible(True)
+        else:
+            self.import_calls.setVisible(False)
 
-            self.import_calls.clear()
+        # ripped from http://code.google.com/p/idapython/source/browse/trunk/examples/ex_imports.py
 
-            if self.show_imports == True:
-                self.import_calls.setVisible(True)
-            else:
-                self.import_calls.setVisible(False)
+        # this should really be a class variable instead of being dynamically generated so often...
+        import_dict = {}
 
-            # ripped from http://code.google.com/p/idapython/source/browse/trunk/examples/ex_imports.py
+        def imp_cb(ea, name, ord):
 
-            # this should really be a class variable instead of being dynamically generated so often...
-            import_dict = {}
+            if name:
+                dname = self.provider.demangleName(name)
+                if dname == None:
+                    dname = name
+                import_dict[iname][dname] = ea
+                
+            return True
 
-            def imp_cb(ea, name, ord):
+        nimps = self.provider.numImports()
+        for i in xrange(0, nimps):
+            iname = self.provider.importName(i)
+            if not iname: continue
+            import_dict[iname] = {}
+            self.provider.enumImportNames(i, imp_cb)
 
-                if name:
-                    dname = self.provider.demangleName(name)
-                    if dname == None:
-                        dname = name
-                    import_dict[iname][dname] = ea
-                    
-                return True
+        try:
+            # this is pretty terrible, fyi. 
+            # such attributes should be stored in the database
+            # as our schema affords it.
+            # 
+            # we do so with our analyzers/collectors in the priv8 version 
+            addy = self.provider.currentEA()
+            funcs = list(self.reftree.listChildren(self.reftree.makeTree(addy)))
+        
+            proc = self.provider.getArch()
 
-            nimps = self.provider.numImports()
-            for i in xrange(0, nimps):
-                iname = self.provider.importName(i)
-                if not iname: continue
-                import_dict[iname] = {}
-                self.provider.enumImportNames(i, imp_cb)
+            if proc in ["arm", "ppc", "mips"]:
+                idata = "extern"
+            elif proc == "pc":
+                idata = ".idata"
 
             try:
-                # this is pretty terrible, fyi. 
-                # such attributes should be stored in the database
-                # as our schema affords it.
-                # 
-                # we do so with our analyzers/collectors in the priv8 version 
-                addy = curEA
-                funcs = list(self.reftree.listChildren(self.reftree.makeTree(addy)))
-            
-                proc = self.provider.getArch()
+                idata = segment.get(idata)
+            except KeyError:
+                if self.options['verbosity'] > 2:
+                    print "[!] Failure looking up import section (%s)" % idata
+                return
 
-                if proc in ["arm", "ppc", "mips"]:
-                    idata = "extern"
-                elif proc == "pc":
-                    idata = ".idata"
+            idata_bounds = (segment.top(idata), segment.bottom(idata))
+            for f in funcs:
+                startEA = self.provider.funcStart(f)
+                endEA = self.provider.funcEnd(f)
 
-                try:
-                    idata = segment.get(idata)
-                except KeyError:
-                    if self.options['verbosity'] > 2:
-                        print "[!] Failure looking up import section (%s)" % idata
-                    return
+                if startEA == None or endEA == None: 
+                    continue
 
-                idata_bounds = (segment.top(idata), segment.bottom(idata))
-                for f in funcs:
-                    startEA = self.provider.funcStart(f)
-                    endEA = self.provider.funcEnd(f)
+                # loop the obvious instructions *and* function chunks
+                all_addresses = list(self.provider.iterInstructions(startEA, endEA))
+                all_addresses.extend(self.provider.iterFuncChunks(startEA))
+                all_addresses = list(set(all_addresses))
 
-                    if startEA == None or endEA == None: 
+                for instr in all_addresses:
+
+                    disasm = self.provider.getDisasm(instr)
+                    if not (disasm.startswith("call") or disasm.startswith("j")):
                         continue
-
-                    # loop the obvious instructions *and* function chunks
-                    all_addresses = list(self.provider.iterInstructions(startEA, endEA))
-                    all_addresses.extend(self.provider.iterFuncChunks(startEA))
-                    all_addresses = list(set(all_addresses))
-
-                    for instr in all_addresses:
-
-                        disasm = self.provider.getDisasm(instr)
-                        if not (disasm.startswith("call") or disasm.startswith("j")):
+                        
+                    unique = set()
+                    try:
+                        ref = database.down(instr)
+                        if ref == []:
                             continue
-                            
-                        unique = set()
-                        try:
-                            ref = database.down(instr)
-                            if ref == []:
-                                continue
-                            else:
-                                for r in ref:
-                                    # check for .idata section
-                                    if r >= idata_bounds[0] and r <= idata_bounds[1]:
+                        else:
+                            for r in ref:
+                                # check for .idata section
+                                if r >= idata_bounds[0] and r <= idata_bounds[1]:
 
-                                        # check the set
-                                        if instr in unique:
-                                            continue
-                                        else:
-                                            unique.add(instr)
+                                    # check the set
+                                    if instr in unique:
+                                        continue
+                                    else:
+                                        unique.add(instr)
 
-                                        # add it
-                                        name = self.provider.demangleName(self.provider.getName(r))
-                                        if name == None:
-                                            name = self.provider.getName(r)
+                                    # add it
+                                    name = self.provider.demangleName(self.provider.getName(r))
+                                    if name == None:
+                                        name = self.provider.getName(r)
 
-                                        modname = ""
-                                        for module, vals in import_dict.iteritems():
+                                    modname = ""
+                                    for module, vals in import_dict.iteritems():
 
-                                            for func, addy in vals.iteritems():
-                                                if addy == r:
-                                                    modname = module
-                                                    break
+                                        for func, addy in vals.iteritems():
+                                            if addy == r:
+                                                modname = module
+                                                break
 
-                                        item = QtGui.QTreeWidgetItem(self.import_calls)
-                                        item.setText(0, "%s!%s" % (modname,name))
-                                        caller_name = self.provider.demangleName(self.provider.getName(startEA))
-                                        if caller_name == None:
-                                            caller_name = self.provider.getName(startEA)  
-                                        item.setText(1, "%s" % caller_name)
+                                    item = QtGui.QTreeWidgetItem(self.import_calls)
+                                    item.setText(0, "%s!%s" % (modname,name))
+                                    caller_name = self.provider.demangleName(self.provider.getName(startEA))
+                                    if caller_name == None:
+                                        caller_name = self.provider.getName(startEA)  
+                                    item.setText(1, "%s" % caller_name)
 
-                                        if self.options['architecture'] == "32":
-                                            item.setText(2, "0x%08x" % instr)
-                                        else:
-                                            item.setText(2, "0x%016x" % instr)
+                                    if self.options['architecture'] == "32":
+                                        item.setText(2, "0x%08x" % instr)
+                                    else:
+                                        item.setText(2, "0x%016x" % instr)
 
-                        except Exception as detail:
-                            print '[!] Fail1, %s' % detail
+                    except Exception as detail:
+                        print '[!] Fail1, %s' % detail
 
-            except IndexError:
-                pass
-            except Exception as detail:
-                print '[!] refreshImports, %s' % detail
-                raise
-
-        self.provider.sync(doit)
+        except IndexError:
+            pass
+        except Exception as detail:
+            print '[!] refreshImports, %s' % detail
+            raise
 
 
     def refreshStrings(self, local=True):
         if self.options['dev_mode']:
             print "[D] refreshStrings: printing stack:"
             traceback.print_stack()
-        
-        lock = threading.RLock()
-        lock.acquire()
-        global currentEA
-        curEA = currentEA
-        lock.release()
+            
+        if self.show_strings == True:
+            self.string_refs.setVisible(True)
+        else:
+            self.string_refs.setVisible(False)
+        self.string_refs.clear()
 
-        def doit():
-
-            if self.show_strings == True:
-                self.string_refs.setVisible(True)
-            else:
-                self.string_refs.setVisible(False)
-                return
+        try:
+            # this is pretty terrible, fyi. 
+            # such attributes should be stored in the database
+            # as our schema affords it.
+            # 
+            # we do so with our analyzers/collectors in the priv8 version 
+            addy = self.provider.currentEA()
+            funcs = list(self.reftree.listChildren(self.reftree.makeTree(addy)))
+            
             self.string_refs.clear()
 
-            try:
-                # this is pretty terrible, fyi. 
-                # such attributes should be stored in the database
-                # as our schema affords it.
-                # 
-                # we do so with our analyzers/collectors in the priv8 version 
-                addy = curEA
-                funcs = list(self.reftree.listChildren(self.reftree.makeTree(addy)))
-                
-                self.string_refs.clear()
+            for f in funcs:
+                startEA = self.provider.funcStart(f)
+                endEA = self.provider.funcEnd(f)
 
-                for f in funcs:
-                    startEA = self.provider.funcStart(f)
-                    endEA = self.provider.funcEnd(f)
+                # loop the obvious instructions *and* function chunks
+                all_addresses = list(self.provider.iterInstructions(startEA, endEA))
+                all_addresses.extend(self.provider.iterFuncChunks(startEA))
+                all_addresses = list(set(all_addresses))
 
-                    # loop the obvious instructions *and* function chunks
-                    all_addresses = list(self.provider.iterInstructions(startEA, endEA))
-                    all_addresses.extend(self.provider.iterFuncChunks(startEA))
-                    all_addresses = list(set(all_addresses))
+                for instr in all_addresses:
+                    unique = set()
+                    try:
+                        ref = database.down(instr)
+                        if ref == []:
+                            continue
+                        else:
+                            for r in ref:
+                                # check flags
+                                res = self.provider.isString(r)
+                                if res:
+                                    if instr in unique:
+                                        continue
+                                    else:
+                                        unique.add(instr)
 
-                    for instr in all_addresses:
-                        unique = set()
-                        try:
-                            ref = database.down(instr)
-                            if ref == []:
-                                continue
-                            else:
-                                for r in ref:
-                                    # check flags
-                                    res = self.provider.isString(r)
-                                    if res:
-                                        if instr in unique:
-                                            continue
-                                        else:
-                                            unique.add(instr)
+                                    value = self.provider.getString(r)
+                                    value = value.replace("\n", "\\n ")
+                                    
+                                    item = QtGui.QTreeWidgetItem(self.string_refs)
+                                    item.setText(0, "%s" % value)
+                                    caller_name = self.provider.demangleName(self.provider.getName(startEA))
+                                    if caller_name == None:
+                                        caller_name = self.provider.getName(startEA)  
+                                    item.setText(1, "%s" % caller_name)
 
-                                        value = self.provider.getString(r)
-                                        value = value.replace("\n", "\\n ")
-                                        
-                                        item = QtGui.QTreeWidgetItem(self.string_refs)
-                                        item.setText(0, "%s" % value)
-                                        caller_name = self.provider.demangleName(self.provider.getName(startEA))
-                                        if caller_name == None:
-                                            caller_name = self.provider.getName(startEA)  
-                                        item.setText(1, "%s" % caller_name)
+                                    if self.options['architecture'] == "32":
+                                        item.setText(2, "0x%08x" % instr)
+                                    else:
+                                        item.setText(2, "0x%016x" % instr)
 
-                                        if self.options['architecture'] == "32":
-                                            item.setText(2, "0x%08x" % instr)
-                                        else:
-                                            item.setText(2, "0x%016x" % instr)
+                    except Exception as detail:
+                        print '[!] Failed adding a string reference (refreshStrings), %s' % detail
 
-                        except Exception as detail:
-                            print '[!] Failed adding a string reference (refreshStrings), %s' % detail
-
-            #except IndexError:
-            #    print "INDEXERROR"
-            #    pass
-            except Exception as detail:
-                pass
-                #print '[!] refreshStrings, %s' % detail
-
-        self.provider.sync(doit)
+        #except IndexError:
+        #    print "INDEXERROR"
+        #    pass
+        except Exception as detail:
+            pass
+            #print '[!] refreshStrings, %s' % detail
 
 
     def removeNode(self):
@@ -3813,14 +3736,8 @@ class UI(PluginForm):
             print "[D] addEdgeSource: printing stack:"
             traceback.print_stack()
         
-        lock = threading.RLock()
-        lock.acquire()
-        global currentEA
-        curEA = currentEA
-        lock.release()
-
         if not userEA:
-            self.edge_source = curEA
+            self.edge_source = self.provider.currentEA()
         else:
             self.edge_source = userEA
         
@@ -3833,15 +3750,9 @@ class UI(PluginForm):
         if self.options['dev_mode']:
             print "[D] addEdgeDest: printing stack:"
             traceback.print_stack()
-
-        lock = threading.RLock()
-        lock.acquire()
-        global currentEA
-        curEA = currentEA
-        lock.release()
         
         if not userEA:
-            self.edge_dest = curEA
+            self.edge_dest = self.provider.currentEA()
         else:
             self.edge_dest = userEA
 
@@ -4251,59 +4162,13 @@ class UI(PluginForm):
 
         print "[*] Toolbag has been shut down"
 
-    def setCurrentEA(self):
-        while True:
-            lock = threading.RLock()
-            lock.acquire()
-            global currentEA
-            currentEA = self.provider.currentEA()
-            lock.release()
-
-            time.sleep(.5)
-    
-    def continuallyRefreshHistory(self):
-        while True:
-            try:
-                self.refreshHistory()
-            except Exception as detail:
-                pass
-            time.sleep(.5)
-
-    def continuallyRefreshImports(self):
-        while True:
-            try:
-                self.refreshImports()
-            except Exception as detail:
-                pass
-            time.sleep(.5)
-
-    def continuallyRefreshStrings(self):
-        while True:
-            try:
-                self.refreshStrings()
-            except Exception as detail:
-                pass
-            time.sleep(.5)
-
-    def continuallyRefreshMarks(self):
-        while True:
-            try:
-                self.refreshMarks()
-            except Exception as detail:
-                pass
-            time.sleep(.5)
 
     def timerthing(self):
         if self.options['dev_mode']:
             print "[D] timerthing: printing stack:"
             traceback.print_stack()
-
-        # woo
-        thread.start_new_thread(self.continuallyRefreshHistory, ())
-        thread.start_new_thread(self.continuallyRefreshImports, ())
-        thread.start_new_thread(self.continuallyRefreshStrings, ())
-        thread.start_new_thread(self.continuallyRefreshMarks, ())
-        thread.start_new_thread(self.setCurrentEA, ())
+            
+        self.timer1 = timercallback_t([self.refreshMarks, self.refreshStrings, self.refreshImports, self.refreshHistory])
 
 
     def deleteQueue(self):
